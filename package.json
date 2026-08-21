@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": false,
   "license": "MIT",
-  "description": "Open-source AI red-teaming lab for prompt injection, jailbreaks, and OWASP LLM Top 10. Self-hosted scanner with Garak-style probes, live Grok or OpenAI-compatible targets, and Grok analyst reports.",
+  "description": "Open-source AI red-teaming lab for prompt injection, jailbreaks, and OWASP LLM Top 10. Self-hosted scanner with Garak-style probes, BYOK live targets, and optional analyst reports.",
   "keywords": [
     "llm",
     "red-team",

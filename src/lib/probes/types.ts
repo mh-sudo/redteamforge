@@ -1,3 +1,5 @@
+import type { ProviderId } from "@/lib/providers/catalog";
+
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export type ProbePack =
@@ -13,7 +15,12 @@ export type ProbePack =
 export type Detector =
   | { kind: "leak"; tokens: string[] }
   | { kind: "keywords"; needles: string[]; requireNoRefusal?: boolean }
-  | { kind: "regex"; pattern: string; flags?: string; requireNoRefusal?: boolean }
+  | {
+      kind: "regex";
+      pattern: string;
+      flags?: string;
+      requireNoRefusal?: boolean;
+    }
   | { kind: "compliance"; markers: string[] };
 
 export type Probe = {
@@ -43,7 +50,7 @@ export type ProbeResult = {
   error?: string;
 };
 
-export type TargetKind = "sandbox" | "xai" | "custom";
+export type TargetKind = "sandbox" | ProviderId;
 
 export type TargetConfig = {
   kind: TargetKind;
@@ -87,12 +94,14 @@ export const PACK_META: Record<
 > = {
   injection: {
     label: "Prompt injection",
-    blurb: "Override, delimiter, and hierarchy attacks against the system prompt.",
+    blurb:
+      "Override, delimiter, and hierarchy attacks against the system prompt.",
     owasp: "LLM01",
   },
   jailbreak: {
     label: "Jailbreaks",
-    blurb: "Roleplay, encoding, and hypothetical frames that strip safety policy.",
+    blurb:
+      "Roleplay, encoding, and hypothetical frames that strip safety policy.",
     owasp: "LLM01",
   },
   exfil: {

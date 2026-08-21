@@ -16,7 +16,9 @@ export const Route = createFileRoute("/")({ component: Home });
 function Home() {
   const scans = useScanStore((s) => s.scans);
   const latest = scans[0];
-  const hits = scans.flatMap((s) => s.results.filter((r) => r.verdict === "hit"));
+  const hits = scans.flatMap((s) =>
+    s.results.filter((r) => r.verdict === "hit"),
+  );
   const openCritical = hits.filter((r) => r.severity === "critical").length;
   const score = latest ? scoreResults(latest.results) : 0;
   const t = latest ? tally(latest.results) : null;
@@ -32,8 +34,8 @@ function Home() {
             your LLM
           </h1>
           <p className="mt-4 max-w-md text-sm text-muted">
-            Garak-style probes mapped to OWASP LLM Top 10. Point at Grok, any
-            OpenAI-compatible endpoint, or the leaky sandbox.
+            Garak-style probes mapped to OWASP LLM Top 10. Point at a live
+            provider, any OpenAI-compatible endpoint, or the leaky sandbox.
           </p>
         </div>
         <dl className="rise-2 grid grid-cols-3 gap-px border border-border bg-border">
@@ -81,7 +83,9 @@ function Home() {
               </CardHeader>
               <CardContent className="space-y-px bg-border p-0">
                 {hits.slice(0, 5).length === 0 ? (
-                  <p className="bg-surface px-5 py-4 text-sm text-muted">No hits in stored scans.</p>
+                  <p className="bg-surface px-5 py-4 text-sm text-muted">
+                    No hits in stored scans.
+                  </p>
                 ) : (
                   hits.slice(0, 5).map((r, i) => {
                     const p = PROBE_BY_ID[r.probeId];
@@ -91,8 +95,12 @@ function Home() {
                         className="flex items-center justify-between gap-3 bg-surface px-5 py-3"
                       >
                         <div className="min-w-0">
-                          <p className="truncate text-sm">{p?.name ?? r.probeId}</p>
-                          <p className="font-mono text-xs text-subtle">{p?.owasp}</p>
+                          <p className="truncate text-sm">
+                            {p?.name ?? r.probeId}
+                          </p>
+                          <p className="font-mono text-xs text-subtle">
+                            {p?.owasp}
+                          </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <SeverityBadge severity={r.severity} />
@@ -108,9 +116,12 @@ function Home() {
         </section>
       ) : (
         <Frame mark className="p-10 text-center">
-          <h2 className="font-display text-2xl tracking-tight uppercase">No scans yet</h2>
+          <h2 className="font-display text-2xl tracking-tight uppercase">
+            No scans yet
+          </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-            Run the sandbox pack to watch a leaky assistant fail in deterministic order.
+            Run the sandbox pack to watch a leaky assistant fail in
+            deterministic order.
           </p>
           <Button asChild className="mt-6">
             <Link to="/scan">New scan</Link>
@@ -134,9 +145,12 @@ function Home() {
           >
             <ScanSearch className="mt-0.5 size-4 shrink-0 text-accent" />
             <span>
-              <span className="block font-display text-lg tracking-tight uppercase">Run a pack</span>
+              <span className="block font-display text-lg tracking-tight uppercase">
+                Run a pack
+              </span>
               <span className="mt-1 block text-sm text-muted">
-                Quick 8-probe pass or a full OWASP sweep against sandbox or live Grok.
+                Quick 8-probe pass or a full OWASP sweep against sandbox or a
+                live target.
               </span>
             </span>
           </Link>
@@ -146,7 +160,9 @@ function Home() {
           >
             <Crosshair className="mt-0.5 size-4 shrink-0 text-accent" />
             <span>
-              <span className="block font-display text-lg tracking-tight uppercase">Manual lab</span>
+              <span className="block font-display text-lg tracking-tight uppercase">
+                Manual lab
+              </span>
               <span className="mt-1 block text-sm text-muted">
                 Fire a single payload, inspect the raw completion, and iterate.
               </span>

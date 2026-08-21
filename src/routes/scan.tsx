@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { Frame } from "@/components/frame";
+import { TargetPicker } from "@/components/target-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,42 +20,42 @@ import {
   PROBES,
 } from "@/lib/probes/catalog";
 import { PACK_META } from "@/lib/probes/types";
-import type { ProbePack, ProbeResult, TargetKind, Verdict } from "@/lib/probes/types";
-import { executeProbe } from "@/lib/scan/engine";
+import type {
+  ProbePack,
+  ProbeResult,
+  TargetKind,
+  Verdict,
+} from "@/lib/probes/types";
+import { PROVIDERS, connectionReady, useVault } from "@/lib/providers";
+import { executeProbe, liveTargetLabel } from "@/lib/scan/engine";
 import { useScanStore } from "@/lib/scan/store";
-import { getAiStatus } from "@/lib/server/ai";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/scan")({ component: ScanPage });
 
-const QUICK_PACKS: ProbePack[] = ["injection", "jailbreak", "exfil", "agency", "output"];
+const QUICK_PACKS: ProbePack[] = [
+  "injection",
+  "jailbreak",
+  "exfil",
+  "agency",
+  "output",
+];
 
 function ScanPage() {
   const navigate = useNavigate();
   const upsert = useScanStore((s) => s.upsertScan);
   const patch = useScanStore((s) => s.patchScan);
+  const connections = useVault((s) => s.connections);
 
   const [kind, setKind] = useState<TargetKind>("sandbox");
-  const [model, setModel] = useState("grok-4.5");
-  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
-  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState("sandbox-forge");
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
   const [quick, setQuick] = useState(true);
   const [packs, setPacks] = useState<ProbePack[]>(QUICK_PACKS);
   const [name, setName] = useState("ForgeBank assistant");
-  const [aiOn, setAiOn] = useState(true);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [live, setLive] = useState<{ id: string; verdict?: Verdict }[]>([]);
   const alive = useRef(true);
-
-  useEffect(() => {
-    alive.current = true;
-    void getAiStatus().then((s) => setAiOn(s.available));
-    return () => {
-      alive.current = false;
-    };
-  }, []);
 
   const selected = useMemo(() => {
     return PROBES.filter((p) => packs.includes(p.pack) && (!quick || p.quick));
@@ -71,12 +72,8 @@ function ScanPage() {
       toast("Pick at least one pack");
       return;
     }
-    if (kind === "xai" && !aiOn) {
-      toast("Live Grok is not available in this environment");
-      return;
-    }
-    if (kind === "custom" && (!apiKey.trim() || !baseUrl.trim())) {
-      toast("Custom target needs a base URL and API key");
+    if (kind !== "sandbox" && !connectionReady(connections, kind)) {
+      toast("Connect this provider in Settings");
       return;
     }
     if (kind !== "sandbox" && selected.length > 12) {
@@ -84,15 +81,10 @@ function ScanPage() {
       return;
     }
 
+    const conn = kind === "sandbox" ? undefined : connections[kind];
     const id = crypto.randomUUID();
     const started = performance.now();
     const probeIds = selected.map((p) => p.id);
-    const targetLabel =
-      kind === "sandbox"
-        ? "Sandbox (vulnerable)"
-        : kind === "xai"
-          ? "xAI Grok"
-          : "Custom endpoint";
 
     upsert({
       id,
@@ -100,9 +92,12 @@ function ScanPage() {
       name,
       target: {
         kind,
-        label: targetLabel,
+        label: liveTargetLabel(kind),
         model: kind === "sandbox" ? "sandbox-forge" : model,
-        baseUrl: kind === "custom" ? baseUrl : undefined,
+        baseUrl:
+          kind === "sandbox"
+            ? undefined
+            : conn?.baseUrl || PROVIDERS[kind].defaultBaseUrl,
       },
       systemPrompt,
       probeIds,
@@ -122,13 +117,15 @@ function ScanPage() {
         const result = await executeProbe(probe, systemPrompt, {
           kind,
           model,
-          baseUrl,
-          apiKey: kind === "custom" ? apiKey : undefined,
+          baseUrl: conn?.baseUrl,
+          apiKey: conn?.apiKey,
         });
         results.push(result);
         if (alive.current) {
           setLive((rows) =>
-            rows.map((r) => (r.id === probe.id ? { id: probe.id, verdict: result.verdict } : r)),
+            rows.map((r) =>
+              r.id === probe.id ? { id: probe.id, verdict: result.verdict } : r,
+            ),
           );
         }
       } catch (err) {
@@ -145,7 +142,9 @@ function ScanPage() {
         results.push(result);
         if (alive.current) {
           setLive((rows) =>
-            rows.map((r) => (r.id === probe.id ? { id: probe.id, verdict: "error" } : r)),
+            rows.map((r) =>
+              r.id === probe.id ? { id: probe.id, verdict: "error" } : r,
+            ),
           );
         }
       }
@@ -163,7 +162,9 @@ function ScanPage() {
     void navigate({ to: "/scans/$scanId", params: { scanId: id } });
   }
 
-  const progress = selected.length ? Math.round((done / selected.length) * 100) : 0;
+  const progress = selected.length
+    ? Math.round((done / selected.length) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -173,12 +174,20 @@ function ScanPage() {
             New scan
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            Choose a target, keep or edit the system prompt under test, then fire a probe pack.
-            Live calls are user-initiated and capped.
+            Choose a target, keep or edit the system prompt under test, then
+            fire a probe pack. Live calls are user-initiated and capped.
           </p>
         </div>
-        <Button onClick={() => void run()} disabled={running} className="shrink-0">
-          {running ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+        <Button
+          onClick={() => void run()}
+          disabled={running}
+          className="shrink-0"
+        >
+          {running ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Play className="size-4" />
+          )}
           {running ? "Scanning" : "Run scan"}
         </Button>
       </header>
@@ -187,65 +196,14 @@ function ScanPage() {
         <div className="space-y-4">
           <Card className="p-5">
             <h2 className="text-sm font-medium">Target</h2>
-            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-              <TargetCard
-                active={kind === "sandbox"}
-                title="Sandbox"
-                hint="Vulnerable ForgeBank sim. No API spend."
-                onClick={() => setKind("sandbox")}
-              />
-              <TargetCard
-                active={kind === "xai"}
-                title="Live Grok"
-                hint={aiOn ? "Uses grok-4.5 via xAI." : "Unavailable here."}
-                disabled={!aiOn}
-                onClick={() => aiOn && setKind("xai")}
-              />
-              <TargetCard
-                active={kind === "custom"}
-                title="Custom"
-                hint="OpenAI-compatible URL + key."
-                onClick={() => setKind("custom")}
+            <div className="mt-3">
+              <TargetPicker
+                kind={kind}
+                onKind={setKind}
+                model={model}
+                onModel={setModel}
               />
             </div>
-            {kind !== "sandbox" ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="model">Model</Label>
-                  <Input
-                    id="model"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                  />
-                </div>
-                {kind === "custom" ? (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="base">Base URL</Label>
-                    <Input
-                      id="base"
-                      value={baseUrl}
-                      onChange={(e) => setBaseUrl(e.target.value)}
-                      placeholder="https://api.openai.com/v1"
-                    />
-                  </div>
-                ) : null}
-                {kind === "custom" ? (
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="key">API key</Label>
-                    <Input
-                      id="key"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      autoComplete="off"
-                    />
-                    <p className="text-xs text-subtle">
-                      Sent only with this scan. Not stored. HTTPS required except localhost.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
           </Card>
 
           <Card className="p-5">
@@ -287,7 +245,11 @@ function ScanPage() {
                   Eight high-signal probes
                 </span>
               </Label>
-              <Switch id="quick-pack" checked={quick} onCheckedChange={setQuick} />
+              <Switch
+                id="quick-pack"
+                checked={quick}
+                onCheckedChange={setQuick}
+              />
             </div>
             <div className="mt-4 space-y-2">
               {ALL_PACKS.map((pack) => {
@@ -309,15 +271,21 @@ function ScanPage() {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="text-sm">{meta.label}</span>
-                        <span className="font-mono text-xs text-subtle">{count}</span>
+                        <span className="font-mono text-xs text-subtle">
+                          {count}
+                        </span>
                       </span>
-                      <span className="block text-xs text-muted">{meta.blurb}</span>
+                      <span className="block text-xs text-muted">
+                        {meta.blurb}
+                      </span>
                     </span>
                   </label>
                 );
               })}
             </div>
-            <p className="mt-3 text-xs text-subtle">{selected.length} probes selected</p>
+            <p className="mt-3 text-xs text-subtle">
+              {selected.length} probes selected
+            </p>
           </Card>
 
           {running || live.some((l) => l.verdict) ? (
@@ -331,7 +299,10 @@ function ScanPage() {
               <Progress value={progress} className="mt-2" />
               <ul className="mt-4 space-y-1.5">
                 {live.map((row) => (
-                  <li key={row.id} className="flex items-center justify-between gap-2 text-sm">
+                  <li
+                    key={row.id}
+                    className="flex items-center justify-between gap-2 text-sm"
+                  >
                     <span className="truncate text-muted">
                       {PROBE_BY_ID[row.id]?.name ?? row.id}
                     </span>
@@ -348,35 +319,5 @@ function ScanPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function TargetCard({
-  active,
-  title,
-  hint,
-  onClick,
-  disabled,
-}: {
-  active: boolean;
-  title: string;
-  hint: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "min-h-11 border border-transparent p-3 text-left transition-colors",
-        active ? "border-accent bg-elevated" : "border-border bg-elevated/40 hover:border-border-strong",
-        disabled && "cursor-not-allowed opacity-40",
-      )}
-    >
-      <span className="block text-sm font-medium">{title}</span>
-      <span className="mt-1 block text-xs text-muted">{hint}</span>
-    </button>
   );
 }

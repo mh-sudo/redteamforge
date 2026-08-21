@@ -6,9 +6,21 @@ import {
   History,
   LayoutDashboard,
   Menu,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { connectedIds, useVault } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -16,6 +28,7 @@ const NAV = [
   { to: "/probes", label: "Probes", icon: Crosshair },
   { to: "/lab", label: "Lab", icon: FlaskConical },
   { to: "/history", label: "History", icon: History },
+  { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 function Brand() {
@@ -25,7 +38,9 @@ function Brand() {
         <Crosshair className="size-4 text-accent" strokeWidth={2} />
       </span>
       <span className="flex flex-col leading-none">
-        <span className="font-display text-sm tracking-tight uppercase">RedTeamForge</span>
+        <span className="font-display text-sm tracking-tight uppercase">
+          RedTeamForge
+        </span>
         <span className="mt-0.5 font-mono text-xs tracking-[0.16em] text-subtle uppercase">
           Unit / RTF-01
         </span>
@@ -45,7 +60,9 @@ function NavLinks({
   return (
     <nav
       className={cn(
-        orientation === "row" ? "hidden items-center gap-1 md:flex" : "flex flex-col gap-1",
+        orientation === "row"
+          ? "hidden items-center gap-1 md:flex"
+          : "flex flex-col gap-1",
       )}
     >
       {NAV.map((item) => {
@@ -75,6 +92,10 @@ function NavLinks({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const ready = connectedIds(useVault((s) => s.connections)).length;
+  const pipLabel = ready
+    ? `${ready} provider${ready === 1 ? "" : "s"} ready`
+    : "No live provider";
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
@@ -82,6 +103,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Brand />
         <NavLinks orientation="row" />
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                to="/settings"
+                aria-label={pipLabel}
+                className="flex size-11 items-center justify-center"
+              >
+                <span
+                  className={cn("size-1.5", ready ? "bg-low" : "bg-accent")}
+                />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>{pipLabel}</TooltipContent>
+          </Tooltip>
           <Button asChild>
             <Link to="/scan">New scan</Link>
           </Button>
@@ -110,7 +145,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Sheet>
 
       <main>
-        <div className="mx-auto max-w-6xl px-4 py-8 pb-32 md:px-8">{children}</div>
+        <div className="mx-auto max-w-6xl px-4 py-8 pb-32 md:px-8">
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { FindingCard } from "@/components/finding-card";
 import { OwaspGrid } from "@/components/owasp-grid";
+import { ProviderSelect } from "@/components/target-picker";
 import { RiskRing } from "@/components/risk-ring";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,23 +18,43 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PROBE_BY_ID } from "@/lib/probes/catalog";
 import { reportJson, reportMarkdown } from "@/lib/scan/report";
 import { owaspCoverage, riskLabel, scoreResults, tally } from "@/lib/scan/risk";
+import {
+  isProviderId,
+  connectedIds,
+  useVault,
+  type ProviderId,
+} from "@/lib/providers";
 import { useScanStore } from "@/lib/scan/store";
-import { analyzeScan, getAiStatus } from "@/lib/server/ai";
+import { analyzeScan } from "@/lib/server/ai";
 import { downloadText, formatRelative } from "@/lib/utils";
 
-export const Route = createFileRoute("/scans/$scanId")({ component: ScanReport });
+export const Route = createFileRoute("/scans/$scanId")({
+  component: ScanReport,
+});
 
 function ScanReport() {
   const { scanId } = Route.useParams();
   const scan = useScanStore((s) => s.scans.find((x) => x.id === scanId));
   const setAnalysis = useScanStore((s) => s.setAnalysis);
+  const connections = useVault((s) => s.connections);
+  const live = connectedIds(connections);
+  const preferred: ProviderId | "" =
+    scan && isProviderId(scan.target.kind) && live.includes(scan.target.kind)
+      ? scan.target.kind
+      : (live[0] ?? "");
+  const [analystId, setAnalystId] = useState<ProviderId | "">("");
   const [busy, setBusy] = useState(false);
+  const selected = analystId || preferred;
 
   if (!scan) {
     return (
       <div className="py-16 text-center">
-        <h1 className="font-display text-2xl tracking-tight uppercase">Scan not found</h1>
-        <p className="mt-2 text-sm text-muted">It may have been deleted from this browser.</p>
+        <h1 className="font-display text-2xl tracking-tight uppercase">
+          Scan not found
+        </h1>
+        <p className="mt-2 text-sm text-muted">
+          It may have been deleted from this browser.
+        </p>
         <Button asChild className="mt-6">
           <Link to="/history">Back to history</Link>
         </Button>
@@ -44,19 +65,31 @@ function ScanReport() {
   const record = scan;
   const score = scoreResults(record.results);
   const t = tally(record.results);
-  const hits = record.results.filter((r) => r.verdict === "hit" || r.verdict === "partial");
-  const rest = record.results.filter((r) => r.verdict !== "hit" && r.verdict !== "partial");
+  const hits = record.results.filter(
+    (r) => r.verdict === "hit" || r.verdict === "partial",
+  );
+  const rest = record.results.filter(
+    (r) => r.verdict !== "hit" && r.verdict !== "partial",
+  );
 
   async function runAnalyst() {
+    if (!selected) {
+      toast("Connect a provider in Settings");
+      return;
+    }
+    const conn = connections[selected];
+    if (!conn?.apiKey) {
+      toast("Connect a provider in Settings");
+      return;
+    }
     setBusy(true);
     try {
-      const status = await getAiStatus();
-      if (!status.available) {
-        toast("Analyst requires live Grok, which is unavailable here");
-        return;
-      }
       const res = await analyzeScan({
         data: {
+          provider: selected,
+          model: conn.model,
+          apiKey: conn.apiKey,
+          baseUrl: conn.baseUrl,
           systemPrompt: record.systemPrompt,
           findings: record.results.map((r) => {
             const p = PROBE_BY_ID[r.probeId];
@@ -92,7 +125,9 @@ function ScanReport() {
             History
           </Link>
         </Button>
-        <span className="text-xs text-subtle">{formatRelative(scan.createdAt)}</span>
+        <span className="text-xs text-subtle">
+          {formatRelative(scan.createdAt)}
+        </span>
       </div>
 
       <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -144,8 +179,15 @@ function ScanReport() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => void runAnalyst()} disabled={busy}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          <Button
+            onClick={() => void runAnalyst()}
+            disabled={busy || !selected}
+          >
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
             {scan.analysis ? "Re-analyze" : "Analyze"}
           </Button>
         </div>
@@ -172,13 +214,17 @@ function ScanReport() {
           {scan.analysis ? (
             <div className="space-y-4">
               <Card className="p-5">
-                <h2 className="font-mono text-xs tracking-[0.14em] uppercase">Executive summary</h2>
+                <h2 className="font-mono text-xs tracking-[0.14em] uppercase">
+                  Executive summary
+                </h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   {scan.analysis.executiveSummary}
                 </p>
               </Card>
               <Card className="p-5">
-                <h2 className="font-mono text-xs tracking-[0.14em] uppercase">Prompt hardening</h2>
+                <h2 className="font-mono text-xs tracking-[0.14em] uppercase">
+                  Prompt hardening
+                </h2>
                 <ul className="mt-3 list-disc space-y-2 pl-4">
                   {scan.analysis.systemPromptAdvice.map((tip) => (
                     <li key={tip} className="text-sm text-muted">
@@ -209,15 +255,38 @@ function ScanReport() {
             </div>
           ) : (
             <Card className="p-8 text-center">
-              <h2 className="font-display text-xl tracking-tight uppercase">No analyst notes yet</h2>
+              <h2 className="font-display text-xl tracking-tight uppercase">
+                No analyst notes yet
+              </h2>
               <p className="mt-2 text-sm text-muted">
-                Grok will prioritize hits, explain why they matter, and suggest prompt-level
-                fixes. One call, capped.
+                A connected model will prioritize hits, explain why they matter,
+                and suggest prompt-level fixes. One call, capped.
               </p>
-              <Button className="mt-5" onClick={() => void runAnalyst()} disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                Analyze
-              </Button>
+              {live.length > 0 ? (
+                <div className="mx-auto mt-5 max-w-sm space-y-3 text-left">
+                  <ProviderSelect
+                    value={selected}
+                    onChange={setAnalystId}
+                    ids={live}
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={() => void runAnalyst()}
+                    disabled={busy}
+                  >
+                    {busy ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    Analyze
+                  </Button>
+                </div>
+              ) : (
+                <Button asChild className="mt-5">
+                  <Link to="/settings">Connect a provider</Link>
+                </Button>
+              )}
             </Card>
           )}
         </TabsContent>

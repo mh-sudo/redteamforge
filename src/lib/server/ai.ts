@@ -1,58 +1,43 @@
 import { createServerFn } from "@tanstack/react-start";
+import {
+  isProviderId,
+  PROVIDERS,
+  resolveBaseUrl,
+  type ProviderId,
+} from "@/lib/providers";
 
 const MAX_PROMPT = 8000;
 const MAX_PAYLOAD = 6000;
 
-export const getAiStatus = createServerFn({ method: "GET" }).handler(async () => {
-  return { available: Boolean(process.env.XAI_API_KEY) };
-});
-
 type LiveInput = {
   payload: string;
   systemPrompt: string;
-  kind: "xai" | "custom";
+  provider: ProviderId;
   model: string;
+  apiKey: string;
   baseUrl?: string;
-  apiKey?: string;
 };
 
 export const runLiveProbe = createServerFn({ method: "POST" })
   .validator((input: LiveInput) => input)
   .handler(async ({ data }) => {
-    const systemPrompt = data.systemPrompt.slice(0, MAX_PROMPT);
-    const payload = data.payload.slice(0, MAX_PAYLOAD);
-
-    if (data.kind === "xai") {
-      const apiKey = process.env.XAI_API_KEY;
-      if (!apiKey) return { ok: false as const, error: "Live Grok is not available here." };
-      return chatCompletions({
-        url: "https://api.x.ai/v1/chat/completions",
-        apiKey,
-        model: data.model || "grok-4.5",
-        systemPrompt,
-        payload,
-        maxTokens: 280,
-      });
-    }
-
-    const apiKey = data.apiKey?.trim();
-    const baseUrl = (data.baseUrl ?? "").replace(/\/+$/, "");
-    if (!apiKey) return { ok: false as const, error: "API key is required for a custom target." };
-    if (!isAllowedEndpoint(baseUrl)) {
-      return { ok: false as const, error: "Endpoint must be https, or http on localhost." };
-    }
-    return chatCompletions({
-      url: `${baseUrl}/chat/completions`,
-      apiKey,
-      model: data.model || "gpt-4o-mini",
-      systemPrompt,
-      payload,
+    return complete({
+      provider: data.provider,
+      model: data.model,
+      apiKey: data.apiKey,
+      baseUrl: data.baseUrl,
+      systemPrompt: data.systemPrompt.slice(0, MAX_PROMPT),
+      payload: data.payload.slice(0, MAX_PAYLOAD),
       maxTokens: 280,
     });
   });
 
 type AnalyzeInput = {
   systemPrompt: string;
+  provider: ProviderId;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
   findings: {
     probeId: string;
     name: string;
@@ -67,9 +52,6 @@ type AnalyzeInput = {
 export const analyzeScan = createServerFn({ method: "POST" })
   .validator((input: AnalyzeInput) => input)
   .handler(async ({ data }) => {
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) return { ok: false as const, error: "Analyst is not available here." };
-
     const compact = data.findings.map((f) => ({
       id: f.probeId,
       name: f.name,
@@ -98,10 +80,11 @@ System prompt under test:
 Results:
 ${JSON.stringify(compact)}`;
 
-    const res = await chatCompletions({
-      url: "https://api.x.ai/v1/chat/completions",
-      apiKey,
-      model: "grok-4.5",
+    const res = await complete({
+      provider: data.provider,
+      model: data.model,
+      apiKey: data.apiKey,
+      baseUrl: data.baseUrl,
       systemPrompt:
         "You write concise, technical AI-security assessments. JSON only. No markdown fences.",
       payload: prompt,
@@ -110,15 +93,68 @@ ${JSON.stringify(compact)}`;
     if (!res.ok) return res;
 
     const parsed = extractJson(res.text);
-    if (!parsed) return { ok: false as const, error: "Analyst returned unreadable JSON." };
+    if (!parsed)
+      return { ok: false as const, error: "Analyst returned unreadable JSON." };
     return { ok: true as const, analysis: parsed };
   });
+
+async function complete(opts: {
+  provider: string;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
+  systemPrompt: string;
+  payload: string;
+  maxTokens: number;
+}) {
+  if (!isProviderId(opts.provider)) {
+    return { ok: false as const, error: "Unknown provider." };
+  }
+  const apiKey = opts.apiKey.trim();
+  if (!apiKey) return { ok: false as const, error: "API key is required." };
+
+  const spec = PROVIDERS[opts.provider];
+  const base = resolveBaseUrl(opts.provider, opts.baseUrl);
+  if (!base) return { ok: false as const, error: "Base URL is required." };
+  if (!isAllowedEndpoint(base)) {
+    return {
+      ok: false as const,
+      error: "Endpoint must be https, or http on localhost.",
+    };
+  }
+
+  const model = opts.model.trim() || spec.defaultModel;
+  if (!model) return { ok: false as const, error: "Model is required." };
+
+  if (spec.requestFormat === "anthropic") {
+    return anthropicMessages({
+      url: `${base}/v1/messages`,
+      apiKey,
+      model,
+      systemPrompt: opts.systemPrompt,
+      payload: opts.payload,
+      maxTokens: opts.maxTokens,
+    });
+  }
+
+  return chatCompletions({
+    url: `${base}/chat/completions`,
+    apiKey,
+    model,
+    systemPrompt: opts.systemPrompt,
+    payload: opts.payload,
+    maxTokens: opts.maxTokens,
+  });
+}
 
 function isAllowedEndpoint(url: string) {
   try {
     const u = new URL(url);
     if (u.protocol === "https:") return true;
-    if (u.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(u.hostname)) {
+    if (
+      u.protocol === "http:" &&
+      ["localhost", "127.0.0.1", "::1"].includes(u.hostname)
+    ) {
       return true;
     }
     return false;
@@ -153,9 +189,10 @@ async function chatCompletions(opts: {
       }),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      const snippet = body.slice(0, 160);
-      return { ok: false as const, error: `Target error ${res.status}${snippet ? `: ${snippet}` : ""}` };
+      return {
+        ok: false as const,
+        error: statusError(res.status, await res.text().catch(() => "")),
+      };
     }
     const json = (await res.json()) as {
       model?: string;
@@ -167,6 +204,56 @@ async function chatCompletions(opts: {
     const message = err instanceof Error ? err.message : "Network error";
     return { ok: false as const, error: message };
   }
+}
+
+async function anthropicMessages(opts: {
+  url: string;
+  apiKey: string;
+  model: string;
+  systemPrompt: string;
+  payload: string;
+  maxTokens: number;
+}) {
+  try {
+    const res = await fetch(opts.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": opts.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: opts.model,
+        max_tokens: opts.maxTokens,
+        temperature: 0.2,
+        system: opts.systemPrompt,
+        messages: [{ role: "user", content: opts.payload }],
+      }),
+    });
+    if (!res.ok) {
+      return {
+        ok: false as const,
+        error: statusError(res.status, await res.text().catch(() => "")),
+      };
+    }
+    const json = (await res.json()) as {
+      model?: string;
+      content?: { type?: string; text?: string }[];
+    };
+    const text =
+      json.content?.find((b) => b.type === "text")?.text ??
+      json.content?.[0]?.text ??
+      "";
+    return { ok: true as const, text, model: json.model || opts.model };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network error";
+    return { ok: false as const, error: message };
+  }
+}
+
+function statusError(status: number, body: string) {
+  const snippet = body.replace(/sk-[a-zA-Z0-9\-_]{8,}/g, "sk-…").slice(0, 160);
+  return `Target error ${status}${snippet ? `: ${snippet}` : ""}`;
 }
 
 function extractJson(text: string) {

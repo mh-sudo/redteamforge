@@ -1,3 +1,4 @@
+import { isProviderId, providerLabel } from "@/lib/providers";
 import { PROBE_BY_ID } from "@/lib/probes/catalog";
 import { verdictFromDetection } from "@/lib/probes/detectors";
 import { sandboxRespond } from "@/lib/probes/sandbox";
@@ -24,7 +25,11 @@ export async function executeProbe(
   if (target.kind === "sandbox") {
     await wait(280 + Math.round(Math.random() * 220));
     const response = sandboxRespond(probe);
-    const { verdict, evidence } = verdictFromDetection(probe, response, systemPrompt);
+    const { verdict, evidence } = verdictFromDetection(
+      probe,
+      response,
+      systemPrompt,
+    );
     return {
       probeId: probe.id,
       verdict,
@@ -36,11 +41,24 @@ export async function executeProbe(
     };
   }
 
+  if (!isProviderId(target.kind) || !target.apiKey) {
+    return {
+      probeId: probe.id,
+      verdict: "error",
+      severity: probe.severity,
+      response: "",
+      evidence: "",
+      latencyMs: Math.round(performance.now() - started),
+      model: target.model,
+      error: "Connect this provider in Settings.",
+    };
+  }
+
   const res = await runLiveProbe({
     data: {
       payload: probe.payload,
       systemPrompt,
-      kind: target.kind,
+      provider: target.kind,
       model: target.model,
       baseUrl: target.baseUrl,
       apiKey: target.apiKey,
@@ -60,7 +78,11 @@ export async function executeProbe(
     };
   }
 
-  const { verdict, evidence } = verdictFromDetection(probe, res.text, systemPrompt);
+  const { verdict, evidence } = verdictFromDetection(
+    probe,
+    res.text,
+    systemPrompt,
+  );
   return {
     probeId: probe.id,
     verdict,
@@ -74,4 +96,9 @@ export async function executeProbe(
 
 export function resolveProbes(ids: string[]): Probe[] {
   return ids.map((id) => PROBE_BY_ID[id]).filter(Boolean);
+}
+
+export function liveTargetLabel(kind: TargetKind) {
+  if (kind === "sandbox") return "Sandbox (vulnerable)";
+  return providerLabel(kind);
 }
