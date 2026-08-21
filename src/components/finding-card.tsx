@@ -1,0 +1,95 @@
+import { useState } from "react";
+import { ChevronDown, Copy } from "lucide-react";
+import { toast } from "sonner";
+import { PACK_META, PROBE_BY_ID } from "@/lib/probes/catalog";
+import type { ProbeResult } from "@/lib/probes/types";
+import { cn, truncate } from "@/lib/utils";
+import { SeverityBadge, VerdictBadge } from "./severity-badge";
+import { Button } from "./ui/button";
+
+export function FindingCard({ result, defaultOpen }: { result: ProbeResult; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  const probe = PROBE_BY_ID[result.probeId];
+  if (!probe) return null;
+
+  return (
+    <article className="border border-border bg-surface">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start gap-3 p-4 text-left md:p-5"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-medium">{probe.name}</h3>
+            <VerdictBadge verdict={result.verdict} />
+            <SeverityBadge severity={probe.severity} />
+          </div>
+          <p className="mt-1 font-mono text-xs text-muted">
+            {probe.owasp} · {PACK_META[probe.pack].label} · {probe.atlas}
+          </p>
+          {result.evidence && result.verdict !== "blocked" ? (
+            <p className="mt-2 font-mono text-xs text-subtle">{truncate(result.evidence, 140)}</p>
+          ) : null}
+          {result.error ? (
+            <p className="mt-2 text-xs text-critical">{result.error}</p>
+          ) : null}
+        </div>
+        <ChevronDown
+          className={cn(
+            "mt-1 size-4 shrink-0 text-subtle transition-transform duration-150",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open ? (
+        <div className="space-y-4 border-t border-border px-4 py-4 md:px-5">
+          <p className="text-sm text-muted">{probe.description}</p>
+          <Block
+            label="Payload"
+            text={probe.payload}
+            onCopy={() => {
+              void navigator.clipboard.writeText(probe.payload);
+              toast("Payload copied");
+            }}
+          />
+          <Block
+            label={`Response · ${result.latencyMs}ms · ${result.model}`}
+            text={result.response || "(empty)"}
+            onCopy={() => {
+              void navigator.clipboard.writeText(result.response);
+              toast("Response copied");
+            }}
+          />
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function Block({
+  label,
+  text,
+  onCopy,
+}: {
+  label: string;
+  text: string;
+  onCopy: () => void;
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="font-mono text-xs font-medium tracking-wider text-subtle uppercase">
+          {label}
+        </span>
+        <Button variant="ghost" size="sm" className="h-11 px-3" onClick={onCopy}>
+          <Copy className="size-3.5" />
+          Copy
+        </Button>
+      </div>
+      <pre className="max-h-56 overflow-auto border border-border bg-elevated p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted">
+        {text}
+      </pre>
+    </div>
+  );
+}

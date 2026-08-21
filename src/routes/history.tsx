@@ -1,0 +1,115 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import { RiskRing } from "@/components/risk-ring";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { ScanRecord } from "@/lib/probes/types";
+import { scoreResults, tally } from "@/lib/scan/risk";
+import { useScanStore } from "@/lib/scan/store";
+import { formatRelative } from "@/lib/utils";
+
+export const Route = createFileRoute("/history")({ component: HistoryPage });
+
+function HistoryPage() {
+  const scans = useScanStore((s) => s.scans);
+  const deleteScan = useScanStore((s) => s.deleteScan);
+  const [pending, setPending] = useState<ScanRecord | null>(null);
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="font-display text-4xl leading-[0.9] tracking-tight uppercase md:text-5xl">
+          History
+        </h1>
+        <p className="mt-3 max-w-xl text-sm text-muted">
+          Scans stay in this browser. Nothing is uploaded unless you pointed at a live target.
+        </p>
+      </header>
+
+      {scans.length === 0 ? (
+        <Card className="p-8 text-center">
+          <p className="text-sm text-muted">No stored scans.</p>
+          <Button asChild className="mt-4">
+            <Link to="/scan">Run one</Link>
+          </Button>
+        </Card>
+      ) : (
+        <ul className="space-y-3">
+          {scans.map((scan) => {
+            const score = scoreResults(scan.results);
+            const t = tally(scan.results);
+            return (
+              <li key={scan.id}>
+                <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+                  <RiskRing score={score} size={88} className="self-center sm:self-auto" />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      to="/scans/$scanId"
+                      params={{ scanId: scan.id }}
+                      className="inline-flex min-h-11 items-center text-base font-medium hover:underline"
+                    >
+                      {scan.name}
+                    </Link>
+                    <p className="text-sm text-muted">
+                      {scan.target.label} · {formatRelative(scan.createdAt)} · {t.hit} hits
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button asChild variant="outline">
+                      <Link to="/scans/$scanId" params={{ scanId: scan.id }}>
+                        Open
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 text-muted hover:text-critical"
+                      aria-label="Delete scan"
+                      onClick={() => setPending(scan)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <AlertDialog open={Boolean(pending)} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this scan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.name ?? "This scan"} will be removed from this browser. Reports cannot be
+              recovered.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) deleteScan(pending.id);
+                setPending(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
