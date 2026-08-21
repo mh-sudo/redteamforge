@@ -227,7 +227,8 @@ src/
   lib/scan/            engine, scoring, reports, history store
   lib/providers/       presets + browser key vault
   lib/server/ai.ts     live completions + analyst
-  routes/              dashboard, scan, lab, probes, history, report, settings
+  lib/server/auth.ts   optional AUTH_PASSWORD gate
+  routes/              dashboard, scan, lab, probes, history, report, settings, login
 docs/
   cover.jpg            OG / GitHub hero
   demo/hero.mp4        6s intro
@@ -237,14 +238,18 @@ docs/
 
 ## Configuration
 
-| Variable | Required | Purpose                              |
-| -------- | -------- | ------------------------------------ |
-| `HOST`   | No       | Bind address (Docker sets `0.0.0.0`) |
-| `PORT`   | No       | Listen port (default 8080 in Docker) |
+| Variable        | Required | Purpose                                                               |
+| --------------- | -------- | --------------------------------------------------------------------- |
+| `HOST`          | No       | Bind address (Docker sets `0.0.0.0`)                                  |
+| `PORT`          | No       | Listen port (default 8080 in Docker)                                  |
+| `AUTH_PASSWORD` | No       | Shared page password. Unset = open. Set on a VPS to require `/login`. |
 
 Copy [`.env.example`](.env.example). Never commit a real `.env`.
 
 ## FAQ
+
+**How do I password-protect a VPS deploy?**
+Set `AUTH_PASSWORD` in the environment (or Docker Compose). The UI redirects to `/login` until that password is entered. Unset it for an open local lab. Put HTTPS in front of the instance.
 
 **Does RedTeamForge work without an API key?**
 Yes. RedTeamForge includes a deterministic leaky sandbox (ForgeBank). Leave the target on Sandbox, run a scan, and you get hits, detectors, and a report with no provider key.

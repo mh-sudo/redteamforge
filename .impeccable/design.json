@@ -1,0 +1,346 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-21T00:00:00.000Z",
+  "title": "Design System: RedTeamForge",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Forge Black",
+        "canonical": "#0a0a0a",
+        "tonalRamp": [
+          "#050505",
+          "#0a0a0a",
+          "#111111",
+          "#171717",
+          "#2a2a2a",
+          "#525252",
+          "#a3a3a3",
+          "#eaeaea"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Deck",
+        "canonical": "#111111",
+        "tonalRamp": [
+          "#050505",
+          "#0a0a0a",
+          "#111111",
+          "#171717",
+          "#2a2a2a",
+          "#525252",
+          "#a3a3a3",
+          "#eaeaea"
+        ]
+      },
+      "elevated": {
+        "role": "neutral",
+        "displayName": "Raised Deck",
+        "canonical": "#171717",
+        "tonalRamp": [
+          "#050505",
+          "#0a0a0a",
+          "#111111",
+          "#171717",
+          "#2a2a2a",
+          "#525252",
+          "#a3a3a3",
+          "#eaeaea"
+        ]
+      },
+      "fg": {
+        "role": "neutral",
+        "displayName": "Steel",
+        "canonical": "#eaeaea",
+        "tonalRamp": [
+          "#0a0a0a",
+          "#171717",
+          "#525252",
+          "#737373",
+          "#a3a3a3",
+          "#c8c8c8",
+          "#eaeaea",
+          "#fafafa"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Steel",
+        "canonical": "#a3a3a3",
+        "tonalRamp": [
+          "#0a0a0a",
+          "#171717",
+          "#525252",
+          "#737373",
+          "#a3a3a3",
+          "#c8c8c8",
+          "#eaeaea",
+          "#fafafa"
+        ]
+      },
+      "subtle": {
+        "role": "neutral",
+        "displayName": "Quiet Steel",
+        "canonical": "#737373",
+        "tonalRamp": [
+          "#0a0a0a",
+          "#171717",
+          "#525252",
+          "#737373",
+          "#a3a3a3",
+          "#c8c8c8",
+          "#eaeaea",
+          "#fafafa"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Hazard Red",
+        "canonical": "#e61919",
+        "tonalRamp": [
+          "#3a0707",
+          "#6e0c0c",
+          "#a01212",
+          "#e61919",
+          "#ef4a4a",
+          "#f47a7a",
+          "#f9b0b0",
+          "#fde8e8"
+        ]
+      },
+      "critical": {
+        "role": "primary",
+        "displayName": "Critical",
+        "canonical": "#e61919",
+        "tonalRamp": [
+          "#3a0707",
+          "#6e0c0c",
+          "#a01212",
+          "#e61919",
+          "#ef4a4a",
+          "#f47a7a",
+          "#f9b0b0",
+          "#fde8e8"
+        ]
+      },
+      "high": {
+        "role": "secondary",
+        "displayName": "Amber",
+        "canonical": "#d4a017",
+        "tonalRamp": [
+          "#2e2305",
+          "#5c460a",
+          "#8a6a10",
+          "#d4a017",
+          "#e0b545",
+          "#ebca7a",
+          "#f5e0b0",
+          "#fbf3e0"
+        ]
+      },
+      "low": {
+        "role": "tertiary",
+        "displayName": "Phosphor",
+        "canonical": "#4af626",
+        "tonalRamp": [
+          "#0c3307",
+          "#18660e",
+          "#249915",
+          "#4af626",
+          "#70f858",
+          "#97fa86",
+          "#c3fdb8",
+          "#e9fee6"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page H1 stencils only. Archivo Black, uppercase, line-height 0.9."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Report titles and empty-state headings."
+      },
+      "title": {
+        "displayName": "Stamp",
+        "purpose": "Card titles, nav, section labels. Mono uppercase wide tracking."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Paragraphs, findings, form help. IBM Plex Mono 14px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels. Mono 12px uppercase muted."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hairline",
+        "value": "0 0 0 1px rgb(234 234 234 / 14%)",
+        "purpose": "Default edge. Not a drop shadow."
+      },
+      {
+        "name": "hairline-hover",
+        "value": "0 0 0 1px rgb(230 25 25 / 55%)",
+        "purpose": "Selected/hover edge on tiles. Reticle, not glow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-rise",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Entrance and control transitions."
+      },
+      {
+        "name": "rise",
+        "value": "0.55s cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Page block entrance: 10px up + fade."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.98)",
+        "purpose": "Button active press."
+      }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Steel fill, square, uppercase. Default action.",
+      "html": "<button class=\"ds-btn-primary\">RUN SCAN</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; background: #eaeaea; color: #0a0a0a; border: 0; border-radius: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background: rgb(234 234 234 / 90%); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #eaeaea; } .ds-btn-primary:active { transform: scale(0.98); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Transparent square with hairline. Secondary actions.",
+      "html": "<button class=\"ds-btn-outline\">EXPORT</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; background: transparent; color: #eaeaea; border: 1px solid rgb(234 234 234 / 14%); border-radius: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-outline:hover { background: #171717; border-color: rgb(234 234 234 / 40%); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px #eaeaea; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Hazard fill. Rare. Disconnect, delete.",
+      "html": "<button class=\"ds-btn-destructive\">DISCONNECT</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; background: #e61919; color: #fafafa; border: 0; border-radius: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-destructive:hover { background: rgb(230 25 25 / 90%); } .ds-btn-destructive:focus-visible { outline: none; box-shadow: 0 0 0 2px #eaeaea; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Raised deck, hairline, mono. 44px floor.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">API KEY</span><input class=\"ds-input\" type=\"password\" placeholder=\"sk-…\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; } .ds-label { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a3a3a3; } .ds-input { height: 44px; width: 100%; padding: 8px 12px; background: #171717; color: #eaeaea; border: 1px solid rgb(234 234 234 / 14%); border-radius: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; } .ds-input::placeholder { color: #737373; } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 2px rgb(234 234 234 / 50%); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Square deck panel. Stamp title, 20px padding.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">TARGET</h2><p class=\"ds-card-body\">Sandbox. No API spend.</p></section>",
+      "css": ".ds-card { background: #111111; color: #eaeaea; border: 1px solid rgb(234 234 234 / 14%); border-radius: 0; padding: 20px; } .ds-card-title { margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; } .ds-card-body { margin: 8px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; line-height: 1.5; color: #a3a3a3; }"
+    },
+    {
+      "name": "Header Nav",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Sticky 64px bar. Active link is hazard red type.",
+      "html": "<header class=\"ds-nav\"><span class=\"ds-brand\">REDTEAMFORGE</span><nav><a class=\"ds-link ds-link-active\" href=\"#\">HOME</a><a class=\"ds-link\" href=\"#\">PROBES</a><a class=\"ds-link\" href=\"#\">LAB</a></nav></header>",
+      "css": ".ds-nav { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 24px; background: rgb(10 10 10 / 90%); border-bottom: 1px solid rgb(234 234 234 / 14%); font-family: 'IBM Plex Mono', ui-monospace, monospace; } .ds-brand { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #eaeaea; } .ds-nav nav { display: flex; gap: 4px; } .ds-link { display: inline-flex; align-items: center; height: 44px; padding: 0 12px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #a3a3a3; text-decoration: none; } .ds-link:hover { color: #eaeaea; } .ds-link-active { color: #e61919; } .ds-link:focus-visible { outline: none; box-shadow: 0 0 0 2px #eaeaea; }"
+    },
+    {
+      "name": "Hit Badge",
+      "kind": "chip",
+      "refersTo": "badge-hit",
+      "description": "Square stamp. Hit is the only filled hazard chip.",
+      "html": "<span class=\"ds-badge ds-badge-hit\">HIT</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; border-radius: 0; border: 1px solid rgb(234 234 234 / 14%); padding: 2px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; } .ds-badge-hit { background: #e61919; border-color: #e61919; color: #fafafa; }"
+    },
+    {
+      "name": "Reticle Frame",
+      "kind": "custom",
+      "refersTo": "frame-mark",
+      "description": "Signature: four hazard corner ticks on a live/status panel.",
+      "html": "<div class=\"ds-frame\"><span class=\"ds-tick ds-tick-tl\"></span><span class=\"ds-tick ds-tick-tr\"></span><span class=\"ds-tick ds-tick-bl\"></span><span class=\"ds-tick ds-tick-br\"></span><p class=\"ds-stamp\">LATEST SWEEP</p></div>",
+      "css": ".ds-frame { position: relative; background: #111111; border: 1px solid rgb(234 234 234 / 14%); border-radius: 0; padding: 20px; min-height: 88px; } .ds-tick { position: absolute; width: 10px; height: 10px; pointer-events: none; } .ds-tick-tl { top: 0; left: 0; border-top: 2px solid #e61919; border-left: 2px solid #e61919; } .ds-tick-tr { top: 0; right: 0; border-top: 2px solid #e61919; border-right: 2px solid #e61919; } .ds-tick-bl { bottom: 0; left: 0; border-bottom: 2px solid #e61919; border-left: 2px solid #e61919; } .ds-tick-br { bottom: 0; right: 0; border-bottom: 2px solid #e61919; border-right: 2px solid #e61919; } .ds-stamp { margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: #737373; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Targeting Reticle",
+    "overview": "RedTeamForge looks like a weapons-lab terminal, not a SaaS dashboard. The screen is a dark steel deck. Type is mono except when a page title hits like a stencil. Corners are square. The only color that shouts is hazard red — and it shouts rarely, like a reticle, not a brand wash.\n\nPersonality is tactical, dense, and dry. Density is cockpit-level without becoming noise: hairline borders, uppercase stamps, tabular numbers. Atmosphere comes from a faint scanline and film grain over the whole viewport, not from glow, glass, or illustration.\n\nThis is a committed dark product. There is no light theme. There is no second accent. There is no rounded corner.",
+    "keyCharacteristics": [
+      "Zero radius on every control, card, badge, and sheet",
+      "One accent (#e61919) used as a targeting mark, never as a fill for large regions",
+      "Archivo Black for page titles only; IBM Plex Mono for everything else",
+      "Depth by fill step (bg → surface → elevated), never by drop shadow",
+      "44px minimum control height",
+      "Scanline + grain overlay, disabled under prefers-reduced-motion"
+    ],
+    "rules": [
+      {
+        "name": "The One Hazard Rule",
+        "body": "Hazard red is a reticle, not a theme. No red page backgrounds, no red hero washes, no red-to-orange gradients. If a screen needs color besides steel and red, it is a verdict badge.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dark Deck Rule",
+        "body": "The product is dark-only. Do not add a light theme, cream paper, or inverted marketing sections inside the app.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Voice Rule",
+        "body": "Archivo Black is for H1/H2 stencils. Everything else is IBM Plex Mono. Do not introduce a third family.",
+        "section": "typography"
+      },
+      {
+        "name": "The Stamp Case Rule",
+        "body": "Nav, card titles, badges, and labels are uppercase with wide tracking. Sentence case is for body copy and findings only.",
+        "section": "typography"
+      },
+      {
+        "name": "The 44px Floor",
+        "body": "Buttons, inputs, nav items, and icon buttons are at least 44×44. Do not ship 32px or 36px controls.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Deck Rule",
+        "body": "If you need hierarchy, step the fill (bg / surface / elevated) or the border. Do not add box-shadow blurs, glass, or gradient meshes.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Zero Radius Rule",
+        "body": "rounded-none is not a preference. Adding rounded-md or pills breaks the system. Exception: none.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do follow this file for every new page, redesign, and tweak. DESIGN.md is the visual authority.",
+      "Do keep radius at 0 and the control floor at 44px.",
+      "Do use hazard red as a sparse signal (nav active, hit, destructive, reticle).",
+      "Do set page titles in Archivo Black uppercase and body in IBM Plex Mono.",
+      "Do reuse Button, Card, Input, Frame, Stamp, Badge before inventing new chrome.",
+      "Do honor prefers-reduced-motion (kill scanline, grain, and rise)."
+    ],
+    "donts": [
+      "Don't add a second accent, a light theme, or a purple/blue AI glow.",
+      "Don't introduce Inter, Geist, a serif, or a rounded geometric sans.",
+      "Don't use drop shadows, glassmorphism, gradient text, or pill buttons.",
+      "Don't fill large regions with hazard red.",
+      "Don't put reticle ticks on every container — only on live/status frames.",
+      "Don't ship controls shorter than 44px or type smaller than 12px for labels.",
+      "Don't invent a new visual language because a feature is new. Extend this one."
+    ]
+  }
+}

@@ -3,15 +3,27 @@ import {
   HeadContent,
   Outlet,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
+import { getGateStatus } from "@/lib/server/auth";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "RedTeamForge";
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    const gate = await getGateStatus();
+    if (gate.enabled && !gate.unlocked && location.pathname !== "/login") {
+      throw redirect({ to: "/login" });
+    }
+    if (gate.enabled && gate.unlocked && location.pathname === "/login") {
+      throw redirect({ to: "/" });
+    }
+    return { gate };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -43,6 +55,7 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const { gate } = Route.useRouteContext();
   return (
     <html lang="en" className="dark antialiased" suppressHydrationWarning>
       <head>
@@ -50,7 +63,7 @@ function RootDocument() {
       </head>
       <body className="bg-bg text-fg">
         <TooltipProvider delayDuration={250}>
-          <AppShell>
+          <AppShell gated={gate.enabled}>
             <Outlet />
           </AppShell>
           <Toaster

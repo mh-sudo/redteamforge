@@ -5,6 +5,7 @@ import {
   FlaskConical,
   History,
   LayoutDashboard,
+  Lock,
   Menu,
   Settings,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { connectedIds, useVault } from "@/lib/providers";
+import { lockGate } from "@/lib/server/auth";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -90,12 +92,28 @@ function NavLinks({
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  gated,
+}: {
+  children: ReactNode;
+  gated: boolean;
+}) {
   const [open, setOpen] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ready = connectedIds(useVault((s) => s.connections)).length;
   const pipLabel = ready
     ? `${ready} provider${ready === 1 ? "" : "s"} ready`
     : "No live provider";
+
+  if (pathname === "/login") {
+    return <div className="min-h-dvh bg-bg text-fg">{children}</div>;
+  }
+
+  async function lock() {
+    await lockGate();
+    window.location.href = "/login";
+  }
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
@@ -117,6 +135,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             </TooltipTrigger>
             <TooltipContent>{pipLabel}</TooltipContent>
           </Tooltip>
+          {gated ? (
+            <Button
+              variant="ghost"
+              onClick={() => void lock()}
+              aria-label="Lock"
+            >
+              <Lock className="size-4" />
+              <span className="hidden md:inline">Lock</span>
+            </Button>
+          ) : null}
           <Button asChild>
             <Link to="/scan">New scan</Link>
           </Button>

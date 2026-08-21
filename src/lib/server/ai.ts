@@ -5,6 +5,7 @@ import {
   resolveBaseUrl,
   type ProviderId,
 } from "@/lib/providers";
+import { assertGate } from "@/lib/server/auth";
 
 const MAX_PROMPT = 8000;
 const MAX_PAYLOAD = 6000;
@@ -21,6 +22,7 @@ type LiveInput = {
 export const runLiveProbe = createServerFn({ method: "POST" })
   .validator((input: LiveInput) => input)
   .handler(async ({ data }) => {
+    assertGate();
     return complete({
       provider: data.provider,
       model: data.model,
@@ -52,6 +54,7 @@ type AnalyzeInput = {
 export const analyzeScan = createServerFn({ method: "POST" })
   .validator((input: AnalyzeInput) => input)
   .handler(async ({ data }) => {
+    assertGate();
     const compact = data.findings.map((f) => ({
       id: f.probeId,
       name: f.name,
