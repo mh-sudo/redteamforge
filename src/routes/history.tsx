@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Frame } from "@/components/frame";
@@ -35,16 +35,6 @@ function HistoryPage() {
   const runId = useScanRunner((s) => s.id);
   const runDone = useScanRunner((s) => s.done);
   const runTotal = useScanRunner((s) => s.total);
-  const runActive = useScanRunner((s) => s.running);
-
-  // A reload kills the in-memory loop; sweep records stuck at "running".
-  useEffect(() => {
-    if (runActive) return;
-    const st = useScanStore.getState();
-    st.scans
-      .filter((s) => s.status === "running")
-      .forEach((s) => st.patchScan(s.id, { status: "aborted" }));
-  }, [runActive]);
 
   return (
     <div className="space-y-6">

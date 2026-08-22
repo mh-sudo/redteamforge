@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Crosshair,
@@ -24,7 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { connectedIds, useVault } from "@/lib/providers";
-import { useScanRunner } from "@/lib/scan/runner";
+import { useScanRunner, resumeInterruptedScans } from "@/lib/scan/runner";
 import { lockGate } from "@/lib/server/auth";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +110,12 @@ export function AppShell({
   const runDone = useScanRunner((s) => s.done);
   const runTotal = useScanRunner((s) => s.total);
   const runActive = useScanRunner((s) => s.running);
+
+  // A reload kills the in-memory loop; resume persisted runs from where
+  // they left off instead of losing them.
+  useEffect(() => {
+    resumeInterruptedScans();
+  }, []);
   const pipLabel = ready
     ? `${ready} provider${ready === 1 ? "" : "s"} ready`
     : "No live provider";
