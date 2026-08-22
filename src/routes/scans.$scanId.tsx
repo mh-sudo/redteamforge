@@ -16,9 +16,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { PROBE_BY_ID } from "@/lib/probes/catalog";
 import { reportJson, reportMarkdown } from "@/lib/scan/report";
-import { owaspCoverage, riskLabel, scoreResults, tally } from "@/lib/scan/risk";
+import {
+  owaspCoverage,
+  riskLabelFor,
+  scoreResults,
+  tally,
+} from "@/lib/scan/risk";
 import {
   isProviderId,
   connectedIds,
@@ -49,11 +55,12 @@ function ScanReport() {
   const selected = analystId || preferred;
 
   useEffect(() => {
-    if (scan) document.title = `${scan.name} — RedTeamForge`;
+    const label = scan?.name;
+    if (label) document.title = `${label} — RedTeamForge`;
     return () => {
       document.title = "RedTeamForge";
     };
-  }, [scan]);
+  }, [scan?.name]);
 
   if (!scan) {
     return (
@@ -73,6 +80,7 @@ function ScanReport() {
 
   const record = scan;
   const score = scoreResults(record.results);
+  const riskText = riskLabelFor(record.results);
   const t = tally(record.results);
   const hits = record.results.filter(
     (r) => r.verdict === "hit" || r.verdict === "partial",
@@ -80,6 +88,14 @@ function ScanReport() {
   const rest = record.results.filter(
     (r) => r.verdict !== "hit" && r.verdict !== "partial",
   );
+  // LLM output: the analyst is told not to invent probes, but nothing
+  // enforces it — dedupe and keep only catalog ids before rendering.
+  const seenFindings = new Set<string>();
+  const analystFindings = (record.analysis?.findings ?? []).filter((f) => {
+    if (!PROBE_BY_ID[f.probeId] || seenFindings.has(f.probeId)) return false;
+    seenFindings.add(f.probeId);
+    return true;
+  });
 
   async function runAnalyst() {
     if (!selected) {
@@ -149,10 +165,11 @@ function ScanReport() {
 
       <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <RiskRing score={score} />
+          <RiskRing score={score} label={riskText} />
           <div>
             <p className="text-xs font-medium tracking-wider text-subtle uppercase">
-              {scan.target.label} · {riskLabel(score)}
+              {scan.target.label} · {riskText}
+              {riskText === "inconclusive" ? " (too many probe errors)" : ""}
             </p>
             <h1 className="mt-1 font-display text-3xl tracking-tight uppercase md:text-4xl">
               {scan.name}
@@ -163,50 +180,59 @@ function ScanReport() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Download className="size-4" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() =>
-                  downloadText(
-                    `${slugify(scan.name)}.md`,
-                    reportMarkdown(scan),
-                    "text/markdown",
-                  )
-                }
-              >
-                Markdown
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  downloadText(
-                    `${slugify(scan.name)}.json`,
-                    reportJson(scan),
-                    "application/json",
-                  )
-                }
-              >
-                JSON
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            onClick={() => void runAnalyst()}
-            disabled={busy || !selected}
-          >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            {scan.analysis ? "Re-analyze" : "Analyze"}
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="size-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    downloadText(
+                      `${slugify(scan.name)}.md`,
+                      reportMarkdown(scan),
+                      "text/markdown",
+                    )
+                  }
+                >
+                  Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    downloadText(
+                      `${slugify(scan.name)}.json`,
+                      reportJson(scan),
+                      "application/json",
+                    )
+                  }
+                >
+                  JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              onClick={() => void runAnalyst()}
+              disabled={busy || !selected}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              {scan.analysis ? "Re-analyze" : "Analyze"}
+            </Button>
+          </div>
+          {busy ? (
+            <Progress
+              value={undefined}
+              aria-label="Analyst reviewing findings"
+              className="w-40"
+            />
+          ) : null}
         </div>
       </header>
 
@@ -220,10 +246,10 @@ function ScanReport() {
 
         <TabsContent value="findings" className="space-y-3">
           {hits.map((r, i) => (
-            <FindingCard key={r.probeId} result={r} defaultOpen={i === 0} />
+            <FindingCard key={`${r.probeId}-${i}`} result={r} defaultOpen={i === 0} />
           ))}
-          {rest.map((r) => (
-            <FindingCard key={r.probeId} result={r} />
+          {rest.map((r, i) => (
+            <FindingCard key={`${r.probeId}-${i}`} result={r} />
           ))}
         </TabsContent>
 
@@ -248,16 +274,16 @@ function ScanReport() {
                   Prompt hardening
                 </h2>
                 <ul className="mt-3 list-disc space-y-2 pl-4">
-                  {scan.analysis.systemPromptAdvice.map((tip) => (
-                    <li key={tip} className="text-sm text-muted">
+                  {scan.analysis.systemPromptAdvice.map((tip, i) => (
+                    <li key={i} className="text-sm text-muted">
                       {tip}
                     </li>
                   ))}
                 </ul>
               </Card>
               <div className="space-y-3">
-                {scan.analysis.findings.map((f) => (
-                  <Card key={f.probeId} className="p-5">
+                {analystFindings.map((f, i) => (
+                  <Card key={`${f.probeId}-${i}`} className="p-5">
                     <p className="text-sm font-medium">
                       {PROBE_BY_ID[f.probeId]?.name ?? f.probeId}
                     </p>
@@ -266,8 +292,8 @@ function ScanReport() {
                       Exploitability: {f.exploitability}
                     </p>
                     <ul className="mt-3 list-disc space-y-1 pl-4 text-sm text-muted">
-                      {f.remediation.map((r) => (
-                        <li key={r}>{r}</li>
+                      {f.remediation.map((r, j) => (
+                        <li key={j}>{r}</li>
                       ))}
                     </ul>
                   </Card>

@@ -32,16 +32,18 @@ export const Route = createFileRoute("/scan")({
 
 type PackMode = "quick" | "full" | "custom";
 
+const QUICK_COUNT = PROBES.filter((p) => p.quick).length;
+
 const MODES: { id: PackMode; label: string; caption: string }[] = [
   {
     id: "quick",
     label: "Quick",
-    caption: "8 high-signal probes across 5 packs.",
+    caption: `${QUICK_COUNT} high-signal probes.`,
   },
   {
     id: "full",
     label: "Full",
-    caption: "Full sweep — all 26 probes across all 8 packs.",
+    caption: `Full sweep — all ${PROBES.length} probes across all ${ALL_PACKS.length} packs.`,
   },
   { id: "custom", label: "Custom", caption: "Narrow the full set by pack." },
 ];
@@ -111,6 +113,14 @@ function ScanPage() {
     }
 
     const conn = kind === "sandbox" ? undefined : connections[kind];
+    if (useScanRunner.getState().running) {
+      toast("A scan is already running — showing its progress.");
+      void navigate({
+        to: "/scans/$scanId",
+        params: { scanId: useScanRunner.getState().id ?? "" },
+      });
+      return;
+    }
     const res = await useScanRunner.getState().start({
       name,
       kind,
@@ -127,8 +137,13 @@ function ScanPage() {
       systemPrompt,
       probeIds: selected.map((p) => p.id),
     });
-    if (res.stopped) toast("Scan stopped — partial report saved");
-    else toast("Scan complete");
+    if (res.alreadyRunning) {
+      toast("A scan is already running — showing its progress.");
+    } else if (res.stopped) {
+      toast("Scan stopped — partial report saved");
+    } else {
+      toast("Scan complete");
+    }
     void navigate({ to: "/scans/$scanId", params: { scanId: res.id } });
   }
 
@@ -286,8 +301,8 @@ function ScanPage() {
                       {m.id === "custom"
                         ? packs.length
                         : m.id === "quick"
-                          ? 8
-                          : 26}
+                          ? QUICK_COUNT
+                          : PROBES.length}
                     </span>
                   </Button>
                 ))}

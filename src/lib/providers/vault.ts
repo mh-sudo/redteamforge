@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware";
 import type { ProviderId } from "./catalog";
 import { PROVIDERS } from "./catalog";
 
@@ -15,6 +19,34 @@ type VaultState = {
   connections: Partial<Record<ProviderId, Connection>>;
   upsert: (id: ProviderId, conn: Connection) => void;
   disconnect: (id: ProviderId) => void;
+};
+
+/** Guarded localStorage so a full/blocked store never breaks the UI. */
+const safeStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(name, value);
+    } catch (err) {
+      console.warn("[vault] could not persist connections", err);
+    }
+  },
+  removeItem: (name) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(name);
+    } catch {
+      /* nothing to clean up */
+    }
+  },
 };
 
 export const useVault = create<VaultState>()(
@@ -35,6 +67,7 @@ export const useVault = create<VaultState>()(
     {
       name: "redteamforge-keys",
       version: 2,
+      storage: createJSONStorage(() => safeStorage),
       migrate: (state) => state as VaultState,
     },
   ),

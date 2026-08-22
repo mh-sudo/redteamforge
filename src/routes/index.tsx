@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PROBE_BY_ID, PROBES } from "@/lib/probes/catalog";
 import { RelTime } from "@/components/rel-time";
-import { owaspCoverage, scoreResults, tally } from "@/lib/scan/risk";
+import { owaspCoverage, riskLabelFor, scoreResults, tally } from "@/lib/scan/risk";
 import { useScanStore } from "@/lib/scan/store";
 
 export const Route = createFileRoute("/")({
@@ -44,7 +44,7 @@ function Home() {
         <dl className="rise-2 grid grid-cols-3 gap-px border border-border bg-border">
           <Stat label="Scans" value={String(scans.length)} />
           <Stat
-            label="Critical hits"
+            label="Critical hits (all-time)"
             value={String(openCritical)}
             danger={openCritical > 0}
           />
@@ -56,7 +56,11 @@ function Home() {
         <section className="rise-3 grid grid-cols-[minmax(0,1fr)] gap-px bg-border lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <Frame mark className="min-w-0 bg-surface p-6 md:p-8">
             <Stamp>Latest sweep</Stamp>
-            <RiskRing score={score} className="mt-4" />
+            <RiskRing
+              score={score}
+              label={latest ? riskLabelFor(latest.results) : undefined}
+              className="mt-4"
+            />
             <p className="mt-6 text-sm">
               {latest.name}
               <span className="mt-1 block text-muted">

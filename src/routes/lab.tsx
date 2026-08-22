@@ -7,6 +7,7 @@ import { VerdictBadge } from "@/components/severity-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_SYSTEM_PROMPT, PROBES } from "@/lib/probes/catalog";
 import { verdictFromDetection } from "@/lib/probes/detectors";
@@ -73,9 +74,13 @@ function LabPage() {
           };
 
       if (kind === "sandbox") {
-        const response = catalog
-          ? sandboxRespond(probe)
-          : sandboxCustomRespond(payload);
+        // Canned responses demonstrate each probe's declared verdict, but
+        // only while the payload is untouched — an edited payload gets the
+        // payload-sensitive responder so the verdict reflects what was sent.
+        const response =
+          catalog && payload === catalog.payload
+            ? sandboxRespond(probe)
+            : sandboxCustomRespond(payload);
         const { verdict, evidence } = verdictFromDetection(
           probe,
           response,
@@ -209,6 +214,13 @@ function LabPage() {
             )}
             Fire probe
           </Button>
+          {busy ? (
+            <Progress
+              value={undefined}
+              aria-label="Probe running"
+              className="mt-2"
+            />
+          ) : null}
         </Card>
 
         <Card className="p-5">

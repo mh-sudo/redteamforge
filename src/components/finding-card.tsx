@@ -19,6 +19,15 @@ export function FindingCard({
   if (!probe) return null;
   const detailId = `finding-${result.probeId}`;
 
+  async function copy(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${label} copied`);
+    } catch {
+      toast.error(`Could not copy ${label.toLowerCase()}`);
+    }
+  }
+
   return (
     <article className="border border-border bg-surface">
       <button
@@ -62,18 +71,14 @@ export function FindingCard({
           <Block
             label="Payload"
             text={probe.payload}
-            onCopy={() => {
-              void navigator.clipboard.writeText(probe.payload);
-              toast("Payload copied");
-            }}
+            onCopy={() => void copy(probe.payload, "Payload")}
           />
           <Block
             label={`Response · ${result.latencyMs}ms · ${result.model}`}
             text={result.response || "(empty)"}
-            onCopy={() => {
-              void navigator.clipboard.writeText(result.response);
-              toast("Response copied");
-            }}
+            onCopy={() =>
+              void copy(result.response || "(empty)", "Response")
+            }
           />
         </div>
       ) : null}

@@ -1,3 +1,8 @@
+import {
+  useRef,
+  forwardRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 import { ModelPresets } from "@/components/model-presets";
@@ -29,6 +34,9 @@ export function TargetPicker({
 }) {
   const connections = useVault((s) => s.connections);
   const live = connectedIds(connections);
+  const tileRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const optionIds: TargetKind[] = ["sandbox", ...live];
 
   function pick(next: TargetKind) {
     onKind(next);
@@ -36,14 +44,38 @@ export function TargetPicker({
     else onModel(resolvePresetModel(next, connections[next]?.model));
   }
 
+  // Radiogroup keyboard semantics: arrows/Home/End move focus, the active
+  // tile is the only tab stop.
+  function onGroupKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const current = optionIds.indexOf(kind);
+    let next = -1;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight")
+      next = (current + 1 + optionIds.length) % optionIds.length;
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft")
+      next = (current - 1 + optionIds.length) % optionIds.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = optionIds.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    const target = optionIds[next];
+    if (target) {
+      pick(target);
+      tileRefs.current[target]?.focus();
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div
         role="radiogroup"
         aria-label="Scan target"
+        onKeyDown={onGroupKeyDown}
         className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3"
       >
         <TargetTile
+          ref={(el) => {
+            tileRefs.current.sandbox = el;
+          }}
           active={kind === "sandbox"}
           title="Sandbox"
           hint="Vulnerable ForgeBank sim. No API spend."
@@ -54,6 +86,9 @@ export function TargetPicker({
           return (
             <TargetTile
               key={id}
+              ref={(el) => {
+                tileRefs.current[id] = el;
+              }}
               active={kind === id}
               title={providerDisplayLabel(id, conn?.label)}
               hint={conn?.model || PROVIDERS[id].defaultModel}
@@ -136,22 +171,22 @@ export function ProviderSelect({
   );
 }
 
-function TargetTile({
-  active,
-  title,
-  hint,
-  onClick,
-}: {
-  active: boolean;
-  title: string;
-  hint: string;
-  onClick: () => void;
-}) {
+const TargetTile = forwardRef<
+  HTMLButtonElement,
+  {
+    active: boolean;
+    title: string;
+    hint: string;
+    onClick: () => void;
+  }
+>(function TargetTile({ active, title, hint, onClick }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       role="radio"
       aria-checked={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={cn(
         "min-h-11 border border-transparent p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg",
@@ -166,4 +201,4 @@ function TargetTile({
       </span>
     </button>
   );
-}
+});

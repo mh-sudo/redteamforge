@@ -74,6 +74,8 @@
   --radius-xl: 0px;
   --shadow-border: 0 0 0 1px rgb(234 234 234 / 14%);
   --shadow-border-hover: 0 0 0 1px rgb(230 25 25 / 55%);
+  --animate-indeterminate: indeterminate 1.4s cubic-bezier(0.22, 1, 0.36, 1)
+    infinite;
 }
 
 @layer base {
@@ -157,6 +159,16 @@ body::after {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Indeterminate progress: a 40%-wide segment sweeping the hairline track. */
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
   }
 }
 

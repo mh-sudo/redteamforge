@@ -1,35 +1,43 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { riskLabel } from "@/lib/scan/risk";
+import type { Severity } from "@/lib/probes/types";
 
 export function RiskRing({
   score,
+  label,
   size = 148,
   className,
 }: {
   score: number;
+  /**
+   * Band to display. Defaults to the numeric band, but callers that have
+   * the results should pass `riskLabelFor(results)` so the severity floor
+   * and inconclusive scans are honored here too.
+   */
+  label?: Severity | "inconclusive";
   size?: number;
   className?: string;
 }) {
-  const label = riskLabel(score);
+  const band = label ?? riskLabel(score);
   const compact = size < 110;
   const display = useCount(score);
-  const strong = `var(--color-${label === "critical" ? "accent" : label === "high" ? "high" : label === "medium" ? "fg" : "low"})`;
+  const strong = `var(--color-${band === "critical" ? "accent" : band === "high" ? "high" : band === "low" ? "low" : "fg"})`;
   const textTone =
-    label === "critical"
+    band === "critical"
       ? "var(--color-accent-text)"
-      : label === "high"
+      : band === "high"
         ? "var(--color-high)"
-        : label === "medium"
-          ? "var(--color-fg)"
-          : "var(--color-low)";
+        : band === "low"
+          ? "var(--color-low)"
+          : "var(--color-fg)";
 
   return (
     <div
       className={cn("flex flex-col", className)}
       style={{ minWidth: compact ? size : undefined }}
       role="img"
-      aria-label={`Risk score ${score} out of 100 — ${label}`}
+      aria-label={`Risk score ${score} out of 100 — ${band}`}
     >
       <span
         className={cn(
@@ -46,7 +54,7 @@ export function RiskRing({
         className="mt-2 font-mono text-xs font-medium tracking-[0.2em] uppercase"
         style={{ color: textTone }}
       >
-        {label}
+        {band}
       </span>
       {!compact ? (
         <span aria-hidden className="mt-4 block h-px w-24 bg-border">

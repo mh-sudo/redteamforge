@@ -198,14 +198,34 @@ docs/
 
 ## Configuration
 
-| Variable             | Required | Purpose                                                               |
-| -------------------- | -------- | --------------------------------------------------------------------- |
-| `HOST`               | No       | Bind address (Docker sets `0.0.0.0`)                                  |
-| `PORT`               | No       | Listen port (default 8080 in Docker)                                  |
-| `AUTH_PASSWORD`      | No       | Shared page password. Unset = open. Set on a VPS to require `/login`. |
-| `AUTH_COOKIE_SECURE` | No       | Set to `1` to force the `Secure` flag on the gate cookie.             |
+| Variable                     | Required | Purpose                                                                                      |
+| ---------------------------- | -------- | -------------------------------------------------------------------------------------------- |
+| `HOST`                       | No       | Bind address (localhost by default; Docker sets `0.0.0.0`)                                   |
+| `PORT`                       | No       | Listen port (default 8080 in Docker)                                                         |
+| `AUTH_PASSWORD`              | No       | Shared page password. Unset = open. Set on a VPS to require `/login`.                         |
+| `AUTH_COOKIE_SECURE`         | No       | Set to `1` to force the `Secure` flag on the gate cookie.                                    |
+| `RTF_ALLOW_PRIVATE_ENDPOINTS`| No       | Allow https provider endpoints on private/LAN addresses (self-hosted models). Implied when `AUTH_PASSWORD` is set. |
 
 Copy [`.env.example`](.env.example). Never commit a real `.env`.
+
+## Deployment & exposure
+
+Running without a password is a supported, intentional mode — for **localhost**.
+Know what an open instance is before you expose one:
+
+- The server performs outbound requests to whichever provider endpoint the
+  browser selects. Endpoint guards block private/internal addresses and
+  redirects by default, but an open instance reachable on a network is still
+  usable by anyone who can reach it.
+- `docker-compose.yml` therefore publishes on `127.0.0.1` only. To expose on
+  a LAN or VPS, change the port mapping to `"8080:8080"` **and** set
+  `AUTH_PASSWORD` — then put HTTPS in front (a reverse proxy or a tunnel
+  like Tailscale works fine).
+- The Docker image runs as a non-root user and ships only the built server
+  output; a `.dockerignore` keeps local `.env` files out of the image.
+- Provider API keys live in your browser's `localStorage` and travel only as
+  the selected provider's auth header — treat the browser profile you scan
+  from as the vault.
 
 ## FAQ
 

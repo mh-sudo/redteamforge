@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import {
   clearGate,
   gateStatus,
@@ -13,7 +14,9 @@ export const getGateStatus = createServerFn({ method: "GET" }).handler(
 );
 
 export const unlockGate = createServerFn({ method: "POST" })
-  .validator((input: { password: string }) => input)
+  .validator((input: unknown) =>
+    z.object({ password: z.string().max(400) }).parse(input),
+  )
   .handler(
     async ({ data }): Promise<{ ok: true } | { ok: false; error: string }> =>
       tryUnlock(data.password),

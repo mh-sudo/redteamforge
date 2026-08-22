@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { ScanRecord } from "@/lib/probes/types";
-import { scoreResults, tally } from "@/lib/scan/risk";
+import { riskLabelFor, scoreResults, tally } from "@/lib/scan/risk";
 import { useScanStore } from "@/lib/scan/store";
 
 export const Route = createFileRoute("/history")({
@@ -89,6 +89,7 @@ function HistoryPage() {
                   ) : (
                     <RiskRing
                       score={score}
+                      label={riskLabelFor(scan.results)}
                       size={88}
                       className="self-center sm:self-auto"
                     />
@@ -118,7 +119,7 @@ function HistoryPage() {
                         Open
                       </Link>
                     </Button>
-                    {scan.status !== "running" ? (
+                    {scan.status !== "running" || scan.id !== runId ? (
                       <Button
                         variant="ghost"
                         size="icon"

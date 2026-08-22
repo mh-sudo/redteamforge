@@ -53,3 +53,19 @@ test("returns null for empty or non-string input", () => {
 test("returns null when object never opens", () => {
   assert.equal(extractJson("no braces here"), null);
 });
+
+test("prefers the first fence that actually parses", () => {
+  const t =
+    "Example:\n```js\nconst x = {not: json};\n```\nAnswer:\n```json\n{\"ok\":true}\n```";
+  assert.deepEqual(extractJson(t), { ok: true });
+});
+
+test("trailing-comma rewrite does not corrupt string literals", () => {
+  const t = '{"a":"x,}","b":[1,2,]}';
+  assert.deepEqual(extractJson(t), { a: "x,}", b: [1, 2] });
+});
+
+test("brace matching ignores braces inside strings", () => {
+  const t = 'shape {"a":"}"} then {"real":{"deep":1}} trailing { junk';
+  assert.deepEqual(extractJson(t), { real: { deep: 1 } });
+});

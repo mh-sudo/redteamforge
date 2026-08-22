@@ -12,8 +12,15 @@ const Progress = React.forwardRef<
     {...props}
   >
     <ProgressPrimitive.Indicator
-      className="h-full bg-accent transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
-      style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      className={cn(
+        "h-full bg-accent transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        // No value = indeterminate: a steel sweep of the hairline track.
+        value == null &&
+          "w-2/5 animate-indeterminate motion-reduce:w-full motion-reduce:animate-none",
+      )}
+      style={
+        value == null ? undefined : { transform: `translateX(-${100 - value}%)` }
+      }
     />
   </ProgressPrimitive.Root>
 ));

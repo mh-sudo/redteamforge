@@ -1,6 +1,22 @@
 import { PACK_META, PROBE_BY_ID } from "@/lib/probes/catalog";
 import type { ScanRecord } from "@/lib/probes/types";
-import { riskLabel, scoreResults, tally } from "./risk";
+import { riskLabelFor, scoreResults, tally } from "./risk";
+
+/**
+ * Model responses are attacker-influenced and routinely contain ``` — a
+ * fence at least one backtick longer than anything inside the content is
+ * the only thing keeping it from breaking out of the code block.
+ */
+function fenceFor(content: string) {
+  const runs = content.match(/`{3,}/g) ?? [];
+  const longest = runs.reduce((max, run) => Math.max(max, run.length), 2);
+  return "`".repeat(longest + 1);
+}
+
+/** One-line evidence/error text can't be fenced — neutralize backticks and newlines. */
+function inline(text: string) {
+  return text.replace(/`/g, "′").replace(/\s+/g, " ").slice(0, 300);
+}
 
 export function reportMarkdown(scan: ScanRecord) {
   const score = scoreResults(scan.results);
@@ -12,19 +28,17 @@ export function reportMarkdown(scan: ScanRecord) {
     ``,
     `- Date: ${new Date(scan.createdAt).toISOString()}`,
     `- Target: ${scan.target.label} (${scan.target.model})`,
-    `- Risk score: ${score}/100 (${riskLabel(score)})`,
+    `- Risk score: ${score}/100 (${riskLabelFor(scan.results)})`,
     `- Hits: ${t.hit} · Partial: ${t.partial} · Blocked: ${t.blocked} · Errors: ${t.error}`,
     `- Duration: ${(scan.durationMs / 1000).toFixed(1)}s`,
     ``,
     `## System prompt under test`,
     ``,
-    "```",
-    scan.systemPrompt.trim(),
-    "```",
-    ``,
-    `## Findings`,
-    ``,
   ];
+
+  const promptFence = fenceFor(scan.systemPrompt);
+  lines.push(promptFence, scan.systemPrompt.trim(), promptFence, ``);
+  lines.push(`## Findings`, ``);
 
   const ordered = [...scan.results].sort((a, b) => rank(a.verdict) - rank(b.verdict));
   for (const r of ordered) {
@@ -34,35 +48,24 @@ export function reportMarkdown(scan: ScanRecord) {
     lines.push(``);
     lines.push(`- OWASP ${p.owasp} · ${PACK_META[p.pack].label} · ATLAS ${p.atlas}`);
     lines.push(`- Severity: ${p.severity}`);
-    if (r.evidence) lines.push(`- Evidence: ${r.evidence}`);
-    if (r.error) lines.push(`- Error: ${r.error}`);
+    if (r.evidence) lines.push(`- Evidence: ${inline(r.evidence)}`);
+    if (r.error) lines.push(`- Error: ${inline(r.error)}`);
     lines.push(``);
-    lines.push(`**Payload**`);
-    lines.push(``);
-    lines.push("```");
-    lines.push(p.payload);
-    lines.push("```");
-    lines.push(``);
-    lines.push(`**Response**`);
-    lines.push(``);
-    lines.push("```");
-    lines.push(r.response || "(empty)");
-    lines.push("```");
-    lines.push(``);
+    const payloadFence = fenceFor(p.payload);
+    lines.push(`**Payload**`, ``, payloadFence, p.payload, payloadFence, ``);
+    const response = r.response || "(empty)";
+    const responseFence = fenceFor(response);
+    lines.push(`**Response**`, ``, responseFence, response, responseFence, ``);
   }
 
   if (scan.analysis) {
     const a = scan.analysis;
-    lines.push(`## Analyst notes`);
-    lines.push(``);
-    lines.push(a.executiveSummary);
-    lines.push(``);
-    lines.push(`Residual risk: ${a.residualRisk}`);
-    lines.push(``);
+    lines.push(`## Analyst notes`, ``);
+    lines.push(inline(a.executiveSummary), ``);
+    lines.push(`Residual risk: ${inline(a.residualRisk)}`, ``);
     if (a.systemPromptAdvice.length) {
-      lines.push(`### Prompt hardening`);
-      lines.push(``);
-      for (const tip of a.systemPromptAdvice) lines.push(`- ${tip}`);
+      lines.push(`### Prompt hardening`, ``);
+      for (const tip of a.systemPromptAdvice) lines.push(`- ${inline(tip)}`);
       lines.push(``);
     }
   }
@@ -82,12 +85,13 @@ function rank(v: string) {
 }
 
 export function reportJson(scan: ScanRecord) {
+  const score = scoreResults(scan.results);
   return JSON.stringify(
     {
       generator: "RedTeamForge",
       ...scan,
-      score: scoreResults(scan.results),
-      risk: riskLabel(scoreResults(scan.results)),
+      score,
+      risk: riskLabelFor(scan.results),
     },
     null,
     2,

@@ -26,6 +26,7 @@ import {
 import { connectedIds, useVault } from "@/lib/providers";
 import { useScanRunner, resumeInterruptedScans } from "@/lib/scan/runner";
 import { lockGate } from "@/lib/server/auth";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -125,8 +126,13 @@ export function AppShell({
   }
 
   async function lock() {
-    await lockGate();
-    window.location.href = "/login";
+    try {
+      await lockGate();
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("[app-shell] lock failed", err);
+      toast.error("Lock failed — check your connection and try again.");
+    }
   }
 
   return (

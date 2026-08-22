@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 import { PROBE_BY_ID } from "@/lib/probes/catalog";
 import type { ProbeResult, TargetKind, Verdict } from "@/lib/probes/types";
 import { executeProbe } from "./engine";
@@ -16,6 +17,16 @@ export type ScanRunConfig = {
   probeIds: string[];
 };
 
+export type ScanRunResult = {
+  id: string;
+  stopped: boolean;
+  /** True when another run was already active and this config was not started. */
+  alreadyRunning: boolean;
+};
+
+/** Responses are capped before persisting so history can't blow the quota. */
+const MAX_PERSISTED_RESPONSE = 20_000;
+
 type RunnerState = {
   /** id of the scan currently executing, null when idle */
   id: string | null;
@@ -23,10 +34,7 @@ type RunnerState = {
   done: number;
   verdicts: Record<string, Verdict | undefined>;
   running: boolean;
-  start: (
-    cfg: ScanRunConfig,
-    opts?: { resumeId?: string },
-  ) => Promise<{ id: string; stopped: boolean }>;
+  start: (cfg: ScanRunConfig, opts?: { resumeId?: string }) => Promise<ScanRunResult>;
   stop: () => void;
 };
 
@@ -54,8 +62,9 @@ export const useScanRunner = create<RunnerState>()((set, get) => ({
 
   start: async (cfg, opts) => {
     if (get().running) {
-      // One scan at a time — return the active run so callers can link to it.
-      return { id: get().id ?? "", stopped: false };
+      // One scan at a time — surface the active run instead of silently
+      // dropping the caller's config.
+      return { id: get().id ?? "", stopped: false, alreadyRunning: true };
     }
     stopFlag = false;
 
@@ -63,14 +72,26 @@ export const useScanRunner = create<RunnerState>()((set, get) => ({
       ? useScanStore.getState().scans.find((s) => s.id === opts.resumeId)
       : undefined;
     const id = existing ? existing.id : crypto.randomUUID();
-    const priorResults = existing?.results ?? [];
-    const startIndex = Math.min(priorResults.length, cfg.probeIds.length);
+
+    // Only catalog probes count toward the run; unknown ids are dropped up
+    // front so progress math can never stall short of 100%.
+    const validIds = cfg.probeIds.filter((pid) => Boolean(PROBE_BY_ID[pid]));
+    const selected = new Set(validIds);
+
+    // Resume by probeId, not index: results are only a prefix of probeIds
+    // if nothing was ever skipped, which earlier versions couldn't
+    // guarantee. Filtering also drops duplicates and stale foreign probes.
+    const priorResults = (existing?.results ?? [])
+      .filter((r) => selected.has(r.probeId))
+      .filter((r, i, all) => all.findIndex((x) => x.probeId === r.probeId) === i);
+    const doneSet = new Set(priorResults.map((r) => r.probeId));
+    const remaining = validIds.filter((pid) => !doneSet.has(pid));
 
     set({
       id,
       running: true,
-      total: cfg.probeIds.length,
-      done: startIndex,
+      total: validIds.length,
+      done: priorResults.length,
       verdicts: Object.fromEntries(
         priorResults.map((r) => [r.probeId, r.verdict]),
       ),
@@ -88,7 +109,7 @@ export const useScanRunner = create<RunnerState>()((set, get) => ({
           baseUrl: cfg.baseUrl,
         },
         systemPrompt: cfg.systemPrompt,
-        probeIds: cfg.probeIds,
+        probeIds: validIds,
         results: [],
         status: "running",
         durationMs: 0,
@@ -100,53 +121,54 @@ export const useScanRunner = create<RunnerState>()((set, get) => ({
     const results: ProbeResult[] = [...priorResults];
     let stopped = false;
 
-    for (const probeId of cfg.probeIds.slice(startIndex)) {
-      if (stopFlag) {
-        stopped = true;
-        break;
-      }
-      const probe = PROBE_BY_ID[probeId];
-      if (!probe) continue;
-      try {
-        const result = await executeProbe(probe, cfg.systemPrompt, {
-          kind: cfg.kind,
-          model: cfg.model,
-          baseUrl: cfg.baseUrl,
-          apiKey: cfg.apiKey,
-        });
-        results.push(result);
+    try {
+      for (const probeId of remaining) {
+        if (stopFlag) {
+          stopped = true;
+          break;
+        }
+        const probe = PROBE_BY_ID[probeId];
+        if (!probe) continue;
+        try {
+          const result = await executeProbe(probe, cfg.systemPrompt, {
+            kind: cfg.kind,
+            model: cfg.model,
+            baseUrl: cfg.baseUrl,
+            apiKey: cfg.apiKey,
+          });
+          results.push({
+            ...result,
+            response: result.response.slice(0, MAX_PERSISTED_RESPONSE),
+          });
+        } catch (err) {
+          results.push({
+            probeId,
+            verdict: "error",
+            severity: probe.severity,
+            response: "",
+            evidence: "",
+            latencyMs: 0,
+            model: cfg.model,
+            error:
+              err instanceof Error ? err.message : "The probe could not run.",
+          });
+        }
         set((s) => ({
           done: results.length,
-          verdicts: { ...s.verdicts, [probeId]: result.verdict },
+          verdicts: { ...s.verdicts, [probeId]: results[results.length - 1]!.verdict },
         }));
-      } catch (err) {
-        results.push({
-          probeId,
-          verdict: "error",
-          severity: probe.severity,
-          response: "",
-          evidence: "",
-          latencyMs: 0,
-          model: cfg.model,
-          error:
-            err instanceof Error ? err.message : "The probe could not run.",
-        });
-        set((s) => ({
-          done: results.length,
-          verdicts: { ...s.verdicts, [probeId]: "error" as Verdict },
-        }));
+        // Persist progress after every probe so reloads can resume.
+        useScanStore.getState().patchScan(id, { results: [...results] });
       }
-      // Persist progress after every probe so reloads can resume.
-      useScanStore.getState().patchScan(id, { results: [...results] });
+    } finally {
+      useScanStore.getState().patchScan(id, {
+        results: [...results],
+        status: stopped ? "aborted" : "complete",
+        durationMs: prevDuration + Math.round(performance.now() - started),
+      });
+      set({ running: false });
     }
-
-    useScanStore.getState().patchScan(id, {
-      results: [...results],
-      status: stopped ? "aborted" : "complete",
-      durationMs: prevDuration + Math.round(performance.now() - started),
-    });
-    set({ running: false });
-    return { id, stopped };
+    return { id, stopped, alreadyRunning: false };
   },
 }));
 
@@ -169,31 +191,67 @@ export function resumeInterruptedScans() {
   const stuck = store.scans.filter((s) => s.status === "running");
   if (stuck.length === 0) return;
 
-  const latest = stuck[0];
-  stuck.slice(1).forEach((s) => store.patchScan(s.id, { status: "aborted" }));
+  const latest = stuck.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b));
+  stuck
+    .filter((s) => s.id !== latest.id)
+    .forEach((s) => store.patchScan(s.id, { status: "aborted" }));
 
-  if (latest.results.length >= latest.probeIds.length) {
+  const doneIds = new Set(latest.results.map((r) => r.probeId));
+  if (latest.probeIds.every((pid) => doneIds.has(pid))) {
     // Everything already ran; just finalize.
     store.patchScan(latest.id, { status: "complete" });
     return;
   }
 
-  const conn =
-    latest.target.kind === "sandbox"
-      ? undefined
-      : useVault.getState().connections[latest.target.kind];
+  if (latest.target.kind !== "sandbox") {
+    const conn = useVault.getState().connections[latest.target.kind];
+    if (!conn?.apiKey?.trim()) {
+      // Without the key the resume would burn every remaining probe into
+      // an error result and finalize — destroying a perfectly resumable
+      // scan. Park it as aborted and tell the visitor instead.
+      store.patchScan(latest.id, { status: "aborted" });
+      toast.error(
+        `"${latest.name}" needs its provider key back — reconnect it in Settings, then re-run from the scan page.`,
+      );
+      return;
+    }
+    void useScanRunner
+      .getState()
+      .start(
+        {
+          name: latest.name,
+          kind: latest.target.kind,
+          model: latest.target.model,
+          baseUrl: latest.target.baseUrl,
+          apiKey: conn.apiKey,
+          targetLabel: latest.target.label,
+          systemPrompt: latest.systemPrompt,
+          probeIds: latest.probeIds,
+        },
+        { resumeId: latest.id },
+      )
+      .catch((err) => {
+        console.error("[resumeInterruptedScans] resume failed", err);
+        useScanStore.getState().patchScan(latest.id, { status: "aborted" });
+      });
+    return;
+  }
 
-  void runner.start(
-    {
-      name: latest.name,
-      kind: latest.target.kind,
-      model: latest.target.model,
-      baseUrl: latest.target.baseUrl,
-      apiKey: conn?.apiKey,
-      targetLabel: latest.target.label,
-      systemPrompt: latest.systemPrompt,
-      probeIds: latest.probeIds,
-    },
-    { resumeId: latest.id },
-  );
+  void useScanRunner
+    .getState()
+    .start(
+      {
+        name: latest.name,
+        kind: "sandbox",
+        model: latest.target.model,
+        targetLabel: latest.target.label,
+        systemPrompt: latest.systemPrompt,
+        probeIds: latest.probeIds,
+      },
+      { resumeId: latest.id },
+    )
+    .catch((err) => {
+      console.error("[resumeInterruptedScans] resume failed", err);
+      useScanStore.getState().patchScan(latest.id, { status: "aborted" });
+    });
 }
