@@ -1,17 +1,50 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: "Archivo Black";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/archivo-black-400-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-400-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
+}
+
 @theme {
   --color-bg: #0a0a0a;
   --color-surface: #111111;
   --color-elevated: #171717;
   --color-fg: #eaeaea;
   --color-muted: #a3a3a3;
-  --color-subtle: #737373;
+  --color-subtle: #8a8a8a;
   --color-border: rgb(234 234 234 / 14%);
   --color-border-strong: rgb(234 234 234 / 22%);
   --color-accent: #e61919;
-  --color-accent-fg: #fafafa;
+  --color-accent-text: #ff5252;
+  --color-accent-fg: #ffffff;
   --color-critical: #e61919;
   --color-high: #d4a017;
   --color-medium: #c8c8c8;
@@ -29,8 +62,10 @@
   --color-input: rgb(234 234 234 / 14%);
   --color-popover: #171717;
   --color-popover-foreground: #eaeaea;
-  --font-sans: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans:
+    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-display: "Archivo Black", "Arial Black", Impact, sans-serif;
   --radius-xs: 0px;
   --radius-sm: 0px;

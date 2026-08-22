@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import { ModelPresets } from "@/components/model-presets";
 import {
   PROVIDERS,
@@ -35,7 +36,11 @@ export function TargetPicker({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+      <div
+        role="radiogroup"
+        aria-label="Scan target"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3"
+      >
         <TargetTile
           active={kind === "sandbox"}
           title="Sandbox"
@@ -92,25 +97,36 @@ export function ProviderSelect({
   value,
   onChange,
   ids,
+  label = "Analyst provider",
 }: {
   value: ProviderId | "";
   onChange: (id: ProviderId) => void;
   ids: ProviderId[];
+  label?: string;
 }) {
   if (ids.length === 0) return null;
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as ProviderId)}
-      className="flex h-11 w-full rounded-none border border-border bg-elevated px-3 font-mono text-sm text-fg"
-    >
-      {ids.map((id) => (
-        <option key={id} value={id}>
-          {PROVIDERS[id].displayName}
-          {PROVIDERS[id].defaultModel ? ` · ${PROVIDERS[id].defaultModel}` : ""}
-        </option>
-      ))}
-    </select>
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as ProviderId)}
+        aria-label={label}
+        className="h-11 w-full appearance-none border border-border bg-elevated px-3 pr-9 font-mono text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50"
+      >
+        {ids.map((id) => (
+          <option key={id} value={id}>
+            {PROVIDERS[id].displayName}
+            {PROVIDERS[id].defaultModel
+              ? ` · ${PROVIDERS[id].defaultModel}`
+              : ""}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted"
+      />
+    </div>
   );
 }
 
@@ -128,9 +144,11 @@ function TargetTile({
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={active}
       onClick={onClick}
       className={cn(
-        "min-h-11 border border-transparent p-3 text-left transition-colors",
+        "min-h-11 border border-transparent p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg",
         active
           ? "border-accent bg-elevated"
           : "border-border bg-elevated/40 hover:border-border-strong",

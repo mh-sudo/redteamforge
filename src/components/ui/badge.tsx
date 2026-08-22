@@ -9,7 +9,7 @@ const badgeVariants = cva(
       variant: {
         default: "border-border bg-elevated text-muted",
         outline: "border-border text-muted",
-        critical: "border-accent text-accent",
+        critical: "border-accent text-accent-text",
         high: "border-high/50 text-high",
         medium: "border-border text-fg",
         low: "border-low/40 text-low",
@@ -28,5 +28,7 @@ export function Badge({
   variant,
   ...props
 }: HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants>) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  );
 }

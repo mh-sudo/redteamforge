@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import { Loader2, Play } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Frame } from "@/components/frame";
 import { TargetPicker } from "@/components/target-picker";
@@ -29,7 +29,10 @@ import { PROVIDERS, connectionReady, useVault } from "@/lib/providers";
 import { executeProbe, liveTargetLabel } from "@/lib/scan/engine";
 import { useScanStore } from "@/lib/scan/store";
 
-export const Route = createFileRoute("/scan")({ component: ScanPage });
+export const Route = createFileRoute("/scan")({
+  component: ScanPage,
+  head: () => ({ meta: [{ title: "New scan — RedTeamForge" }] }),
+});
 
 type PackMode = "quick" | "full" | "custom";
 
@@ -61,8 +64,20 @@ function ScanPage() {
   const [name, setName] = useState("ForgeBank assistant");
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
+  const [gateError, setGateError] = useState<{
+    msg: string;
+    settings?: boolean;
+  } | null>(null);
   const [live, setLive] = useState<{ id: string; verdict?: Verdict }[]>([]);
   const alive = useRef(true);
+  const stopRef = useRef(false);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   const selected = useMemo(() => {
     if (mode === "quick") return PROBES.filter((p) => p.quick);
@@ -92,12 +107,16 @@ function ScanPage() {
   }
 
   async function run() {
+    setGateError(null);
     if (selected.length === 0) {
-      toast("Pick at least one pack");
+      setGateError({ msg: "Pick at least one pack before running." });
       return;
     }
     if (kind !== "sandbox" && !connectionReady(connections, kind)) {
-      toast("Connect this provider in Settings");
+      setGateError({
+        msg: `${liveTargetLabel(kind)} needs a key. Connect it in Settings first.`,
+        settings: true,
+      });
       return;
     }
 
@@ -105,6 +124,7 @@ function ScanPage() {
     const id = crypto.randomUUID();
     const started = performance.now();
     const probeIds = selected.map((p) => p.id);
+    stopRef.current = false;
 
     upsert({
       id,
@@ -131,7 +151,12 @@ function ScanPage() {
     setLive(probeIds.map((pid) => ({ id: pid })));
 
     const results: ProbeResult[] = [];
+    let stopped = false;
     for (let i = 0; i < selected.length; i++) {
+      if (stopRef.current) {
+        stopped = true;
+        break;
+      }
       const probe = selected[i];
       try {
         const result = await executeProbe(probe, systemPrompt, {
@@ -173,11 +198,16 @@ function ScanPage() {
 
     patch(id, {
       results,
-      status: "complete",
+      status: stopped ? "aborted" : "complete",
       durationMs: Math.round(performance.now() - started),
     });
     if (!alive.current) return;
     setRunning(false);
+    if (stopped) {
+      toast("Scan stopped — partial report saved");
+      void navigate({ to: "/scans/$scanId", params: { scanId: id } });
+      return;
+    }
     toast("Scan complete");
     void navigate({ to: "/scans/$scanId", params: { scanId: id } });
   }
@@ -201,167 +231,198 @@ function ScanPage() {
             are token-capped.
           </p>
         </div>
-        <Button
-          onClick={() => void run()}
-          disabled={running}
-          className="shrink-0"
-        >
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            onClick={() => void run()}
+            disabled={running}
+            className="shrink-0"
+          >
+            {running ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Play className="size-4" />
+            )}
+            {running ? "Scanning" : "Run scan"}
+          </Button>
           {running ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Play className="size-4" />
-          )}
-          {running ? "Scanning" : "Run scan"}
-        </Button>
-      </header>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <Card className="p-5">
-            <h2 className="text-sm font-medium">Target</h2>
-            <div className="mt-3">
-              <TargetPicker
-                kind={kind}
-                onKind={setKind}
-                model={model}
-                onModel={setModel}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-medium">System prompt under test</h2>
-              <Button
-                variant="ghost"
-                className="h-11"
-                onClick={() => setSystemPrompt(DEFAULT_SYSTEM_PROMPT)}
-              >
-                Reset demo
-              </Button>
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              This is the policy we attack. Paste your production instructions.
-            </p>
-            <Textarea
-              className="mt-3 min-h-44"
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-            />
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <Card className="p-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="scan-name">Scan name</Label>
-              <Input
-                id="scan-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div
-              className="mt-4 grid grid-cols-3 gap-1"
-              role="group"
-              aria-label="Probe pack selection"
+            <Button
+              variant="outline"
+              className="shrink-0"
+              onClick={() => {
+                stopRef.current = true;
+              }}
             >
-              {MODES.map((m) => (
-                <Button
-                  key={m.id}
-                  size="sm"
-                  variant={mode === m.id ? "default" : "secondary"}
-                  aria-pressed={mode === m.id}
-                  onClick={() => setMode(m.id)}
-                >
-                  {m.label}
-                  <span className="font-mono text-xs opacity-70">
-                    {m.id === "custom"
-                      ? packs.length
-                      : m.id === "quick"
-                        ? 8
-                        : 26}
-                  </span>
-                </Button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-muted">{activeMode?.caption}</p>
-
-            <div className="mt-4 space-y-2">
-              {ALL_PACKS.map((pack) => {
-                const meta = PACK_META[pack];
-                const count =
-                  mode === "quick"
-                    ? PROBES.filter((p) => p.pack === pack && p.quick).length
-                    : PROBES.filter((p) => p.pack === pack).length;
-                const checked =
-                  mode === "full"
-                    ? true
-                    : mode === "quick"
-                      ? count > 0
-                      : packs.includes(pack);
-                return (
-                  <label
-                    key={pack}
-                    className={`flex min-h-11 cursor-pointer items-start gap-3 bg-elevated px-3 py-2.5${
-                      mode === "quick" && count === 0 ? " opacity-50" : ""
-                    }`}
-                  >
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={checked}
-                      onCheckedChange={() => selectPack(pack)}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="text-sm">{meta.label}</span>
-                        <span className="font-mono text-xs text-subtle">
-                          {count}
-                        </span>
-                      </span>
-                      <span className="block text-xs text-muted">
-                        {meta.blurb}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-xs text-subtle">
-              {selected.length} probes selected
-            </p>
-          </Card>
-
-          {running || live.some((l) => l.verdict) ? (
-            <Frame mark className="p-5">
-              <div className="flex items-center justify-between text-xs text-muted">
-                <span>
-                  {done}/{selected.length}
-                </span>
-                <span className="font-mono tabular-nums">{progress}%</span>
-              </div>
-              <Progress value={progress} className="mt-2" />
-              <ul className="mt-4 space-y-1.5">
-                {live.map((row) => (
-                  <li
-                    key={row.id}
-                    className="flex items-center justify-between gap-2 text-sm"
-                  >
-                    <span className="truncate text-muted">
-                      {PROBE_BY_ID[row.id]?.name ?? row.id}
-                    </span>
-                    {row.verdict ? (
-                      <VerdictBadge verdict={row.verdict} />
-                    ) : (
-                      <span className="text-xs text-subtle">queued</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </Frame>
+              <Square className="size-4" />
+              Stop
+            </Button>
           ) : null}
         </div>
-      </div>
+      </header>
+
+      {gateError ? (
+        <p role="alert" className="text-sm text-accent-text">
+          {gateError.msg}{" "}
+          {gateError.settings ? (
+            <Link to="/settings" className="underline underline-offset-4">
+              Open settings
+            </Link>
+          ) : null}
+        </p>
+      ) : null}
+
+      <fieldset disabled={running} className="min-w-0">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="space-y-4">
+            <Card className="p-5">
+              <h2 className="text-sm font-medium">Target</h2>
+              <div className="mt-3">
+                <TargetPicker
+                  kind={kind}
+                  onKind={setKind}
+                  model={model}
+                  onModel={setModel}
+                />
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-medium">
+                  System prompt under test
+                </h2>
+                <Button
+                  variant="ghost"
+                  className="h-11"
+                  onClick={() => setSystemPrompt(DEFAULT_SYSTEM_PROMPT)}
+                >
+                  Reset demo
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                This is the policy we attack. Paste your production
+                instructions.
+              </p>
+              <Textarea
+                className="mt-3 min-h-44"
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+              />
+            </Card>
+          </div>
+
+          <div className="space-y-4">
+            <Card className="p-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="scan-name">Scan name</Label>
+                <Input
+                  id="scan-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div
+                className="mt-4 grid grid-cols-3 gap-1"
+                role="group"
+                aria-label="Probe pack selection"
+              >
+                {MODES.map((m) => (
+                  <Button
+                    key={m.id}
+                    size="sm"
+                    variant={mode === m.id ? "default" : "secondary"}
+                    aria-pressed={mode === m.id}
+                    onClick={() => setMode(m.id)}
+                  >
+                    {m.label}
+                    <span className="font-mono text-xs opacity-70">
+                      {m.id === "custom"
+                        ? packs.length
+                        : m.id === "quick"
+                          ? 8
+                          : 26}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-muted">{activeMode?.caption}</p>
+
+              <div className="mt-4 space-y-2">
+                {ALL_PACKS.map((pack) => {
+                  const meta = PACK_META[pack];
+                  const count =
+                    mode === "quick"
+                      ? PROBES.filter((p) => p.pack === pack && p.quick).length
+                      : PROBES.filter((p) => p.pack === pack).length;
+                  const checked =
+                    mode === "full"
+                      ? true
+                      : mode === "quick"
+                        ? count > 0
+                        : packs.includes(pack);
+                  return (
+                    <label
+                      key={pack}
+                      className="flex min-h-11 cursor-pointer items-start gap-3 bg-elevated px-3 py-2.5 transition-opacity"
+                    >
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={checked}
+                        onCheckedChange={() => selectPack(pack)}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-sm">{meta.label}</span>
+                          <span className="font-mono text-xs text-subtle">
+                            {count}
+                          </span>
+                        </span>
+                        <span className="block text-xs text-muted">
+                          {meta.blurb}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs text-subtle">
+                {selected.length} probes selected
+              </p>
+            </Card>
+
+            {running || live.some((l) => l.verdict) ? (
+              <Frame mark className="p-5">
+                <div
+                  role="status"
+                  className="flex items-center justify-between text-xs text-muted"
+                >
+                  <span>
+                    {done}/{selected.length}
+                  </span>
+                  <span className="font-mono tabular-nums">{progress}%</span>
+                </div>
+                <Progress value={progress} className="mt-2" />
+                <ul aria-live="polite" className="mt-4 space-y-1.5">
+                  {live.map((row) => (
+                    <li
+                      key={row.id}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <span className="truncate text-muted">
+                        {PROBE_BY_ID[row.id]?.name ?? row.id}
+                      </span>
+                      {row.verdict ? (
+                        <VerdictBadge verdict={row.verdict} />
+                      ) : (
+                        <span className="text-xs text-subtle">queued</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </Frame>
+            ) : null}
+          </div>
+        </div>
+      </fieldset>
     </div>
   );
 }

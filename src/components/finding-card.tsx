@@ -7,17 +7,26 @@ import { cn, truncate } from "@/lib/utils";
 import { SeverityBadge, VerdictBadge } from "./severity-badge";
 import { Button } from "./ui/button";
 
-export function FindingCard({ result, defaultOpen }: { result: ProbeResult; defaultOpen?: boolean }) {
+export function FindingCard({
+  result,
+  defaultOpen,
+}: {
+  result: ProbeResult;
+  defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const probe = PROBE_BY_ID[result.probeId];
   if (!probe) return null;
+  const detailId = `finding-${result.probeId}`;
 
   return (
     <article className="border border-border bg-surface">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-3 p-4 text-left md:p-5"
+        aria-expanded={open}
+        aria-controls={detailId}
+        className="flex w-full items-start gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg md:p-5"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -29,10 +38,12 @@ export function FindingCard({ result, defaultOpen }: { result: ProbeResult; defa
             {probe.owasp} · {PACK_META[probe.pack].label} · {probe.atlas}
           </p>
           {result.evidence && result.verdict !== "blocked" ? (
-            <p className="mt-2 font-mono text-xs text-subtle">{truncate(result.evidence, 140)}</p>
+            <p className="mt-2 font-mono text-xs text-subtle">
+              {truncate(result.evidence, 140)}
+            </p>
           ) : null}
           {result.error ? (
-            <p className="mt-2 text-xs text-critical">{result.error}</p>
+            <p className="mt-2 text-xs text-accent-text">{result.error}</p>
           ) : null}
         </div>
         <ChevronDown
@@ -43,7 +54,10 @@ export function FindingCard({ result, defaultOpen }: { result: ProbeResult; defa
         />
       </button>
       {open ? (
-        <div className="space-y-4 border-t border-border px-4 py-4 md:px-5">
+        <div
+          id={detailId}
+          className="space-y-4 border-t border-border px-4 py-4 md:px-5"
+        >
           <p className="text-sm text-muted">{probe.description}</p>
           <Block
             label="Payload"
@@ -82,7 +96,12 @@ function Block({
         <span className="font-mono text-xs font-medium tracking-wider text-subtle uppercase">
           {label}
         </span>
-        <Button variant="ghost" size="sm" className="h-11 px-3" onClick={onCopy}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 px-3"
+          onClick={onCopy}
+        >
           <Copy className="size-3.5" />
           Copy
         </Button>

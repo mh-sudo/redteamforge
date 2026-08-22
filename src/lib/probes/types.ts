@@ -86,6 +86,7 @@ export type ScanRecord = {
   status: "running" | "complete" | "aborted";
   analysis?: ScanAnalysis;
   durationMs: number;
+  sample?: boolean;
 };
 
 export const PACK_META: Record<

@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Lock,
   Menu,
+  Plus,
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,15 +36,15 @@ const NAV = [
 
 function Brand() {
   return (
-    <Link to="/" className="flex min-h-11 items-center gap-2.5">
-      <span className="flex size-8 items-center justify-center border border-border">
+    <Link to="/" className="flex min-h-11 min-w-0 items-center gap-2.5">
+      <span className="flex size-8 shrink-0 items-center justify-center border border-border">
         <Crosshair className="size-4 text-accent" strokeWidth={2} />
       </span>
-      <span className="flex flex-col leading-none">
-        <span className="font-display text-sm tracking-tight uppercase">
+      <span className="flex min-w-0 flex-col leading-none">
+        <span className="truncate font-display text-sm tracking-tight uppercase">
           RedTeamForge
         </span>
-        <span className="mt-0.5 font-mono text-xs tracking-[0.16em] text-subtle uppercase">
+        <span className="mt-0.5 hidden font-mono text-xs tracking-[0.16em] text-subtle uppercase sm:block">
           Unit / RTF-01
         </span>
       </span>
@@ -78,9 +79,10 @@ function NavLinks({
             key={item.to}
             to={item.to}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-11 items-center gap-2 px-3 font-mono text-xs tracking-[0.14em] uppercase transition-colors",
-              active ? "text-accent" : "text-muted hover:text-fg",
+              "flex h-11 items-center gap-2 px-3 font-mono text-xs tracking-[0.14em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg",
+              active ? "text-accent-text" : "text-muted hover:text-fg",
             )}
           >
             {orientation === "col" ? <Icon className="size-4" /> : null}
@@ -117,6 +119,12 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-surface focus:px-3 focus:py-2 focus:font-mono focus:text-xs focus:tracking-[0.14em] focus:text-fg focus:uppercase focus:ring-2 focus:ring-fg"
+      >
+        Skip to content
+      </a>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-bg/90 px-4 backdrop-blur-sm md:px-6">
         <Brand />
         <NavLinks orientation="row" />
@@ -125,8 +133,8 @@ export function AppShell({
             <TooltipTrigger asChild>
               <Link
                 to="/settings"
-                aria-label={pipLabel}
-                className="flex size-11 items-center justify-center"
+                aria-label={`Provider status: ${pipLabel}. Open settings`}
+                className="hidden size-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg sm:flex"
               >
                 <span
                   className={cn("size-1.5", ready ? "bg-low" : "bg-accent")}
@@ -140,13 +148,17 @@ export function AppShell({
               variant="ghost"
               onClick={() => void lock()}
               aria-label="Lock"
+              className="px-3"
             >
               <Lock className="size-4" />
               <span className="hidden md:inline">Lock</span>
             </Button>
           ) : null}
-          <Button asChild>
-            <Link to="/scan">New scan</Link>
+          <Button asChild className="shrink-0 px-3 sm:px-4">
+            <Link to="/scan" aria-label="New scan">
+              <Plus className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">New scan</span>
+            </Link>
           </Button>
           <Button
             variant="ghost"
@@ -172,7 +184,7 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      <main>
+      <main id="main">
         <div className="mx-auto max-w-6xl px-4 py-8 pb-32 md:px-8">
           {children}
         </div>

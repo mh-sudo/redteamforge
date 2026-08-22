@@ -7,11 +7,14 @@ import { SeverityBadge, VerdictBadge } from "@/components/severity-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PROBE_BY_ID, PROBES } from "@/lib/probes/catalog";
+import { RelTime } from "@/components/rel-time";
 import { owaspCoverage, scoreResults, tally } from "@/lib/scan/risk";
 import { useScanStore } from "@/lib/scan/store";
-import { formatRelative } from "@/lib/utils";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  component: Home,
+  head: () => ({ meta: [{ title: "RedTeamForge — Red-team your LLM" }] }),
+});
 
 function Home() {
   const scans = useScanStore((s) => s.scans);
@@ -41,7 +44,7 @@ function Home() {
         <dl className="rise-2 grid grid-cols-3 gap-px border border-border bg-border">
           <Stat label="Scans" value={String(scans.length)} />
           <Stat
-            label="Crit hits"
+            label="Critical hits"
             value={String(openCritical)}
             danger={openCritical > 0}
           />
@@ -50,18 +53,18 @@ function Home() {
       </header>
 
       {latest ? (
-        <section className="rise-3 grid gap-px bg-border lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <Frame mark className="bg-surface p-6 md:p-8">
+        <section className="rise-3 grid grid-cols-[minmax(0,1fr)] gap-px bg-border lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <Frame mark className="min-w-0 bg-surface p-6 md:p-8">
             <Stamp>Latest sweep</Stamp>
             <RiskRing score={score} className="mt-4" />
             <p className="mt-6 text-sm">
               {latest.name}
               <span className="mt-1 block text-muted">
-                {latest.target.label} · {formatRelative(latest.createdAt)}
+                {latest.target.label} · <RelTime iso={latest.createdAt} />
               </span>
             </p>
             <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs tracking-wider uppercase text-muted">
-              <span className="text-accent">{t?.hit ?? 0} hit</span>
+              <span className="text-accent-text">{t?.hit ?? 0} hit</span>
               <span>{t?.partial ?? 0} partial</span>
               <span className="text-low">{t?.blocked ?? 0} blocked</span>
             </div>
@@ -73,8 +76,8 @@ function Home() {
             </Button>
           </Frame>
 
-          <div className="grid gap-px bg-border">
-            <Card className="rounded-none border-0">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-px bg-border">
+            <Card className="min-w-0 rounded-none border-0">
               <CardHeader className="flex-row items-center justify-between">
                 <CardTitle>Recent hits</CardTitle>
                 <Button asChild variant="ghost" className="h-11 px-3">
@@ -130,7 +133,7 @@ function Home() {
       )}
 
       <section className="grid gap-px bg-border lg:grid-cols-2">
-        <Card className="rounded-none border-0">
+        <Card className="min-w-0 rounded-none border-0">
           <CardHeader>
             <CardTitle>OWASP LLM Top 10</CardTitle>
           </CardHeader>
@@ -138,7 +141,7 @@ function Home() {
             <OwaspGrid coverage={coverage} />
           </CardContent>
         </Card>
-        <div className="grid gap-px bg-border">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-px bg-border">
           <Link
             to="/scan"
             className="group flex items-start gap-4 bg-surface p-6 transition-colors hover:bg-elevated"

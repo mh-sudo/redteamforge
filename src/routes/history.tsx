@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Frame } from "@/components/frame";
+import { RelTime } from "@/components/rel-time";
 import { RiskRing } from "@/components/risk-ring";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,9 +20,11 @@ import {
 import type { ScanRecord } from "@/lib/probes/types";
 import { scoreResults, tally } from "@/lib/scan/risk";
 import { useScanStore } from "@/lib/scan/store";
-import { formatRelative } from "@/lib/utils";
 
-export const Route = createFileRoute("/history")({ component: HistoryPage });
+export const Route = createFileRoute("/history")({
+  component: HistoryPage,
+  head: () => ({ meta: [{ title: "History — RedTeamForge" }] }),
+});
 
 function HistoryPage() {
   const scans = useScanStore((s) => s.scans);
@@ -33,17 +38,23 @@ function HistoryPage() {
           History
         </h1>
         <p className="mt-3 max-w-xl text-sm text-muted">
-          Scans stay in this browser. Nothing is uploaded unless you pointed at a live target.
+          Scans stay in this browser. Nothing is uploaded unless you pointed at
+          a live target.
         </p>
       </header>
 
       {scans.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-sm text-muted">No stored scans.</p>
-          <Button asChild className="mt-4">
+        <Frame mark className="p-10 text-center">
+          <h2 className="font-display text-2xl tracking-tight uppercase">
+            No stored scans
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+            Every scan you run is archived here, in this browser only.
+          </p>
+          <Button asChild className="mt-6">
             <Link to="/scan">Run one</Link>
           </Button>
-        </Card>
+        </Frame>
       ) : (
         <ul className="space-y-3">
           {scans.map((scan) => {
@@ -52,17 +63,28 @@ function HistoryPage() {
             return (
               <li key={scan.id}>
                 <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
-                  <RiskRing score={score} size={88} className="self-center sm:self-auto" />
+                  <RiskRing
+                    score={score}
+                    size={88}
+                    className="self-center sm:self-auto"
+                  />
                   <div className="min-w-0 flex-1">
-                    <Link
-                      to="/scans/$scanId"
-                      params={{ scanId: scan.id }}
-                      className="inline-flex min-h-11 items-center text-base font-medium hover:underline"
-                    >
-                      {scan.name}
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        to="/scans/$scanId"
+                        params={{ scanId: scan.id }}
+                        className="inline-flex min-h-11 items-center text-base font-medium hover:underline"
+                      >
+                        {scan.name}
+                      </Link>
+                      {scan.sample ? <Badge>sample</Badge> : null}
+                      {scan.status === "aborted" ? (
+                        <Badge variant="error">aborted</Badge>
+                      ) : null}
+                    </div>
                     <p className="text-sm text-muted">
-                      {scan.target.label} · {formatRelative(scan.createdAt)} · {t.hit} hits
+                      {scan.target.label} · <RelTime iso={scan.createdAt} /> ·{" "}
+                      {t.hit} hits
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -88,13 +110,16 @@ function HistoryPage() {
         </ul>
       )}
 
-      <AlertDialog open={Boolean(pending)} onOpenChange={(open) => !open && setPending(null)}>
+      <AlertDialog
+        open={Boolean(pending)}
+        onOpenChange={(open) => !open && setPending(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this scan?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pending?.name ?? "This scan"} will be removed from this browser. Reports cannot be
-              recovered.
+              {pending?.name ?? "This scan"} will be removed from this browser.
+              Reports cannot be recovered.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

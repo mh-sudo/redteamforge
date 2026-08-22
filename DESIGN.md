@@ -7,11 +7,12 @@ colors:
   elevated: "#171717"
   fg: "#eaeaea"
   muted: "#a3a3a3"
-  subtle: "#737373"
+  subtle: "#8a8a8a"
   border: "rgb(234 234 234 / 14%)"
   border-strong: "rgb(234 234 234 / 22%)"
   accent: "#e61919"
-  accent-fg: "#fafafa"
+  accent-text: "#ff5252"
+  accent-fg: "#ffffff"
   critical: "#e61919"
   high: "#d4a017"
   medium: "#c8c8c8"
@@ -132,6 +133,7 @@ A near-black deck, cool steel type, and a single hazard-red voice. Status colors
 ### Primary
 
 - **Hazard Red** (`{colors.accent}`): Active nav, hit badges, destructive actions, reticle corner ticks, text selection. Occupies a small fraction of any screen. Rarity is the signal.
+- **Hazard Red Text** (`{colors.accent-text}`): Hazard red lightened for small type (under ~19px) so red _text_ passes WCAG AA on the dark deck. Use for red words: nav active links, critical badges, error lines. Pure `accent` stays on fills, borders, ticks, and display-size numerals.
 
 ### Neutral
 
@@ -140,7 +142,7 @@ A near-black deck, cool steel type, and a single hazard-red voice. Status colors
 - **Raised Deck** (`{colors.elevated}`): Inputs, nested rows, secondary buttons, hover wells.
 - **Steel** (`{colors.fg}`): Primary text and the primary button fill.
 - **Muted Steel** (`{colors.muted}`): Body supporting copy.
-- **Quiet Steel** (`{colors.subtle}`): Stamps, timestamps, placeholders, queued states.
+- **Quiet Steel** (`{colors.subtle}`): Stamps, timestamps, placeholders, queued states. Tuned to pass WCAG AA on `surface` and `elevated`.
 - **Hairline** (`{colors.border}`): Default 1px edges.
 - **Hairline Strong** (`{colors.border-strong}`): Hover edges on selectable tiles.
 

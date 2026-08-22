@@ -35,8 +35,9 @@ function sampleResult(id: string, latencyMs: number): ProbeResult {
 
 export const SAMPLE_SCAN: ScanRecord = {
   id: "sample-forge-baseline",
-  createdAt: "2026-08-21T05:43:00.000Z",
-  name: "ForgeBank assistant — baseline",
+  createdAt: new Date(Date.now() - 3_600_000).toISOString(),
+  name: "ForgeBank assistant — baseline (sample)",
+  sample: true,
   target: {
     kind: "sandbox",
     label: "Sandbox (vulnerable)",
@@ -92,7 +93,8 @@ export const SAMPLE_SCAN: ScanRecord = {
         probeId: "out-xss",
         whyItMatters:
           "If this reply is rendered as HTML, the attacker gets a stored XSS in every operator console that replays the transcript.",
-        exploitability: "Depends on the client renderer — assume unsafe until proven.",
+        exploitability:
+          "Depends on the client renderer — assume unsafe until proven.",
         remediation: [
           "Treat model output as untrusted text; never dangerouslySetInnerHTML.",
           "Sanitize or refuse script/event-handler markup in a gateway filter.",

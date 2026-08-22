@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Download, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { FindingCard } from "@/components/finding-card";
 import { OwaspGrid } from "@/components/owasp-grid";
 import { ProviderSelect } from "@/components/target-picker";
+import { RelTime } from "@/components/rel-time";
 import { RiskRing } from "@/components/risk-ring";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,7 @@ import {
 } from "@/lib/providers";
 import { useScanStore } from "@/lib/scan/store";
 import { analyzeScan } from "@/lib/server/ai";
-import { downloadText, formatRelative } from "@/lib/utils";
+import { downloadText, slugify } from "@/lib/utils";
 
 export const Route = createFileRoute("/scans/$scanId")({
   component: ScanReport,
@@ -44,7 +45,15 @@ function ScanReport() {
       : (live[0] ?? "");
   const [analystId, setAnalystId] = useState<ProviderId | "">("");
   const [busy, setBusy] = useState(false);
+  const [analystError, setAnalystError] = useState("");
   const selected = analystId || preferred;
+
+  useEffect(() => {
+    if (scan) document.title = `${scan.name} — RedTeamForge`;
+    return () => {
+      document.title = "RedTeamForge";
+    };
+  }, [scan]);
 
   if (!scan) {
     return (
@@ -74,15 +83,16 @@ function ScanReport() {
 
   async function runAnalyst() {
     if (!selected) {
-      toast("Connect a provider in Settings");
+      setAnalystError("Connect a provider in Settings first.");
       return;
     }
     const conn = connections[selected];
     if (!conn?.apiKey) {
-      toast("Connect a provider in Settings");
+      setAnalystError("That provider has no API key stored.");
       return;
     }
     setBusy(true);
+    setAnalystError("");
     try {
       const res = await analyzeScan({
         data: {
@@ -106,11 +116,18 @@ function ScanReport() {
         },
       });
       if (!res.ok) {
+        setAnalystError(res.error);
         toast(res.error);
         return;
       }
       setAnalysis(record.id, res.analysis);
       toast("Analyst notes ready");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "The analyst call could not be completed.";
+      setAnalystError(message);
     } finally {
       setBusy(false);
     }
@@ -126,7 +143,7 @@ function ScanReport() {
           </Link>
         </Button>
         <span className="text-xs text-subtle">
-          {formatRelative(scan.createdAt)}
+          <RelTime iso={scan.createdAt} />
         </span>
       </div>
 
@@ -158,7 +175,7 @@ function ScanReport() {
               <DropdownMenuItem
                 onClick={() =>
                   downloadText(
-                    `${scan.name.replace(/\s+/g, "-").toLowerCase()}.md`,
+                    `${slugify(scan.name)}.md`,
                     reportMarkdown(scan),
                     "text/markdown",
                   )
@@ -169,7 +186,7 @@ function ScanReport() {
               <DropdownMenuItem
                 onClick={() =>
                   downloadText(
-                    `${scan.name.replace(/\s+/g, "-").toLowerCase()}.json`,
+                    `${slugify(scan.name)}.json`,
                     reportJson(scan),
                     "application/json",
                   )
@@ -211,6 +228,11 @@ function ScanReport() {
         </TabsContent>
 
         <TabsContent value="analyst">
+          {analystError ? (
+            <p role="alert" className="mb-3 text-sm text-accent-text">
+              {analystError}
+            </p>
+          ) : null}
           {scan.analysis ? (
             <div className="space-y-4">
               <Card className="p-5">

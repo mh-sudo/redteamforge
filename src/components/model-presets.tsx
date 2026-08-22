@@ -9,13 +9,18 @@ export function ModelPresets({
   onChange,
   inputId,
   placeholder,
+  error,
+  invalid,
 }: {
   presets: readonly ModelPreset[];
   value: string;
   onChange: (id: string) => void;
   inputId?: string;
   placeholder?: string;
+  error?: string;
+  invalid?: boolean;
 }) {
+  const errorId = inputId ? `${inputId}-error` : undefined;
   return (
     <div className="space-y-1.5 sm:col-span-2">
       <Label htmlFor={inputId}>Model</Label>
@@ -30,9 +35,10 @@ export function ModelPresets({
             <button
               key={p.id}
               type="button"
+              aria-pressed={active}
               onClick={() => onChange(p.id)}
               className={cn(
-                "h-8 border px-2 font-mono text-xs tracking-[0.08em] uppercase transition-colors",
+                "min-h-11 border px-3 font-mono text-xs tracking-[0.08em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg",
                 active
                   ? "border-accent bg-elevated text-fg"
                   : "border-border bg-elevated/40 text-muted hover:border-border-strong hover:text-fg",
@@ -48,7 +54,14 @@ export function ModelPresets({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-invalid={invalid || undefined}
+        aria-describedby={error && errorId ? errorId : undefined}
       />
+      {error && errorId ? (
+        <p id={errorId} role="alert" className="text-xs text-accent-text">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

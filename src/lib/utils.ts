@@ -17,7 +17,11 @@ export function formatRelative(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-export function downloadText(filename: string, content: string, mime = "text/plain") {
+export function downloadText(
+  filename: string,
+  content: string,
+  mime = "text/plain",
+) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -31,4 +35,14 @@ export function truncate(text: string, max = 280) {
   const t = text.trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max).trimEnd()}…`;
+}
+
+export function slugify(text: string) {
+  const slug = text
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+  return slug || "scan";
 }

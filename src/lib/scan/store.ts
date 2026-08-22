@@ -32,6 +32,6 @@ export const useScanStore = create<ScanState>()(
         set((s) => ({ scans: s.scans.filter((x) => x.id !== id) })),
       getScan: (id) => get().scans.find((x) => x.id === id),
     }),
-    { name: "redteamforge-scans" },
+    { name: "redteamforge-scans", version: 1 },
   ),
 );

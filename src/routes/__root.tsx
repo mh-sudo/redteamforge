@@ -39,15 +39,19 @@ export const Route = createRootRoute({
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: "/fonts/ibm-plex-mono-400-latin.woff2",
         crossOrigin: "anonymous",
       },
       {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: "/fonts/archivo-black-400-latin.woff2",
+        crossOrigin: "anonymous",
       },
     ],
   }),
@@ -71,11 +75,12 @@ function RootDocument() {
             position="bottom-right"
             toastOptions={{
               style: {
-                background: "#171717",
-                border: "1px solid rgb(234 234 234 / 14%)",
+                background: "var(--color-elevated)",
+                border: "1px solid var(--color-border)",
                 borderRadius: 0,
-                color: "#eaeaea",
-                fontFamily: "IBM Plex Mono, ui-monospace, monospace",
+                color: "var(--color-fg)",
+                fontFamily:
+                  "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace",
               },
             }}
           />
