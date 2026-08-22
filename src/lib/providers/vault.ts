@@ -7,6 +7,8 @@ export type Connection = {
   apiKey: string;
   model: string;
   baseUrl?: string;
+  /** UI-only name, used to tell custom endpoints apart. */
+  label?: string;
 };
 
 type VaultState = {
@@ -30,7 +32,11 @@ export const useVault = create<VaultState>()(
           return { connections: next };
         }),
     }),
-    { name: "redteamforge-keys" },
+    {
+      name: "redteamforge-keys",
+      version: 2,
+      migrate: (state) => state as VaultState,
+    },
   ),
 );
 

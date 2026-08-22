@@ -172,6 +172,17 @@ export function providerLabel(id: ProviderId) {
   return PROVIDERS[id].displayName;
 }
 
+/**
+ * UI-facing name. Custom endpoints can carry a user label so several
+ * self-hosted targets are distinguishable: "Custom - MyProxy".
+ */
+export function providerDisplayLabel(id: ProviderId, label?: string) {
+  const base = PROVIDERS[id].displayName;
+  if (id !== "custom") return base;
+  const clean = label?.trim();
+  return clean ? `${base} - ${clean}` : base;
+}
+
 export function resolveBaseUrl(id: ProviderId, override?: string) {
   const trimmed = override?.trim().replace(/\/+$/, "") ?? "";
   if (trimmed) return trimmed;

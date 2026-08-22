@@ -23,6 +23,7 @@ import {
   connectionReady,
   defaultConnection,
   presetsFor,
+  providerDisplayLabel,
   resolvePresetModel,
   useVault,
   type Connection,
@@ -77,9 +78,10 @@ function SettingsPage() {
       apiKey: draft.apiKey.trim(),
       model: draft.model.trim(),
       baseUrl: draft.baseUrl?.trim() || undefined,
+      label: draft.label?.trim() || undefined,
     });
     setOpenId(null);
-    toast(`${PROVIDERS[openId].displayName} connected`);
+    toast(`${providerDisplayLabel(openId, draft.label)} connected`);
   }
 
   async function testConnection() {
@@ -151,8 +153,8 @@ function SettingsPage() {
           Settings
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-muted">
-          Connect live providers here. Keys stay in this browser, are not
-          encrypted, and are never uploaded. Sandbox needs no key.
+          Connect live providers here. Keys stay in this browser and are never
+          sent to the cloud — safe and local.
         </p>
         <p className="mt-2 font-mono text-xs tracking-[0.14em] text-subtle uppercase">
           {readyCount} connected
@@ -180,7 +182,11 @@ function SettingsPage() {
                   </span>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{spec.displayName}</p>
+                  <p className="text-sm font-medium">
+                    {ready
+                      ? providerDisplayLabel(id, connections[id]?.label)
+                      : spec.displayName}
+                  </p>
                   <p className="font-mono text-xs text-muted">
                     {ready
                       ? connections[id]?.model || spec.defaultModel
@@ -215,6 +221,20 @@ function SettingsPage() {
                   }}
                   className="mt-4 grid gap-3 sm:grid-cols-2"
                 >
+                  {id === "custom" ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${id}-label`}>Label</Label>
+                      <Input
+                        id={`${id}-label`}
+                        value={draft.label ?? ""}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, label: e.target.value }))
+                        }
+                        placeholder="My proxy"
+                        maxLength={40}
+                      />
+                    </div>
+                  ) : null}
                   {presetsFor(id) ? (
                     <ModelPresets
                       presets={presetsFor(id)!}

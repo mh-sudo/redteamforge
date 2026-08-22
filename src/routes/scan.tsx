@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, Play, Square } from "lucide-react";
 import { toast } from "sonner";
-import { Frame } from "@/components/frame";
+import { Frame, Stamp } from "@/components/frame";
 import { TargetPicker } from "@/components/target-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,14 +19,10 @@ import {
   PROBES,
 } from "@/lib/probes/catalog";
 import { PACK_META } from "@/lib/probes/types";
-import type {
-  ProbePack,
-  ProbeResult,
-  TargetKind,
-  Verdict,
-} from "@/lib/probes/types";
+import type { ProbePack, TargetKind } from "@/lib/probes/types";
 import { PROVIDERS, connectionReady, useVault } from "@/lib/providers";
-import { executeProbe, liveTargetLabel } from "@/lib/scan/engine";
+import { liveTargetLabel } from "@/lib/scan/engine";
+import { useScanRunner } from "@/lib/scan/runner";
 import { useScanStore } from "@/lib/scan/store";
 
 export const Route = createFileRoute("/scan")({
@@ -52,8 +48,6 @@ const MODES: { id: PackMode; label: string; caption: string }[] = [
 
 function ScanPage() {
   const navigate = useNavigate();
-  const upsert = useScanStore((s) => s.upsertScan);
-  const patch = useScanStore((s) => s.patchScan);
   const connections = useVault((s) => s.connections);
 
   const [kind, setKind] = useState<TargetKind>("sandbox");
@@ -62,22 +56,18 @@ function ScanPage() {
   const [mode, setMode] = useState<PackMode>("quick");
   const [packs, setPacks] = useState<ProbePack[]>(ALL_PACKS);
   const [name, setName] = useState("ForgeBank assistant");
-  const [running, setRunning] = useState(false);
-  const [done, setDone] = useState(0);
   const [gateError, setGateError] = useState<{
     msg: string;
     settings?: boolean;
   } | null>(null);
-  const [live, setLive] = useState<{ id: string; verdict?: Verdict }[]>([]);
-  const alive = useRef(true);
-  const stopRef = useRef(false);
 
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
+  const running = useScanRunner((s) => s.running);
+  const doneCount = useScanRunner((s) => s.done);
+  const total = useScanRunner((s) => s.total);
+  const verdicts = useScanRunner((s) => s.verdicts);
+  const runId = useScanRunner((s) => s.id);
+  const stopRun = useScanRunner((s) => s.stop);
+  const activeScan = useScanStore((s) => s.scans.find((x) => x.id === runId));
 
   const selected = useMemo(() => {
     if (mode === "quick") return PROBES.filter((p) => p.quick);
@@ -121,100 +111,30 @@ function ScanPage() {
     }
 
     const conn = kind === "sandbox" ? undefined : connections[kind];
-    const id = crypto.randomUUID();
-    const started = performance.now();
-    const probeIds = selected.map((p) => p.id);
-    stopRef.current = false;
-
-    upsert({
-      id,
-      createdAt: new Date().toISOString(),
+    const res = await useScanRunner.getState().start({
       name,
-      target: {
+      kind,
+      model,
+      baseUrl:
+        kind === "sandbox"
+          ? undefined
+          : conn?.baseUrl || PROVIDERS[kind].defaultBaseUrl,
+      apiKey: conn?.apiKey,
+      targetLabel: liveTargetLabel(
         kind,
-        label: liveTargetLabel(kind),
-        model: kind === "sandbox" ? "sandbox-forge" : model,
-        baseUrl:
-          kind === "sandbox"
-            ? undefined
-            : conn?.baseUrl || PROVIDERS[kind].defaultBaseUrl,
-      },
+        kind === "sandbox" ? undefined : conn?.label,
+      ),
       systemPrompt,
-      probeIds,
-      results: [],
-      status: "running",
-      durationMs: 0,
+      probeIds: selected.map((p) => p.id),
     });
-
-    setRunning(true);
-    setDone(0);
-    setLive(probeIds.map((pid) => ({ id: pid })));
-
-    const results: ProbeResult[] = [];
-    let stopped = false;
-    for (let i = 0; i < selected.length; i++) {
-      if (stopRef.current) {
-        stopped = true;
-        break;
-      }
-      const probe = selected[i];
-      try {
-        const result = await executeProbe(probe, systemPrompt, {
-          kind,
-          model,
-          baseUrl: conn?.baseUrl,
-          apiKey: conn?.apiKey,
-        });
-        results.push(result);
-        if (alive.current) {
-          setLive((rows) =>
-            rows.map((r) =>
-              r.id === probe.id ? { id: probe.id, verdict: result.verdict } : r,
-            ),
-          );
-        }
-      } catch (err) {
-        const result: ProbeResult = {
-          probeId: probe.id,
-          verdict: "error",
-          severity: probe.severity,
-          response: "",
-          evidence: "",
-          latencyMs: 0,
-          model,
-          error: err instanceof Error ? err.message : "Probe failed",
-        };
-        results.push(result);
-        if (alive.current) {
-          setLive((rows) =>
-            rows.map((r) =>
-              r.id === probe.id ? { id: probe.id, verdict: "error" } : r,
-            ),
-          );
-        }
-      }
-      if (alive.current) setDone(i + 1);
-    }
-
-    patch(id, {
-      results,
-      status: stopped ? "aborted" : "complete",
-      durationMs: Math.round(performance.now() - started),
-    });
-    if (!alive.current) return;
-    setRunning(false);
-    if (stopped) {
-      toast("Scan stopped — partial report saved");
-      void navigate({ to: "/scans/$scanId", params: { scanId: id } });
-      return;
-    }
-    toast("Scan complete");
-    void navigate({ to: "/scans/$scanId", params: { scanId: id } });
+    if (res.stopped) toast("Scan stopped — partial report saved");
+    else toast("Scan complete");
+    void navigate({ to: "/scans/$scanId", params: { scanId: res.id } });
   }
 
-  const progress = selected.length
-    ? Math.round((done / selected.length) * 100)
-    : 0;
+  // Tweak 1: while scanning, the live indicator takes over the pack card's slot.
+  const showProgress = running && Boolean(activeScan);
+  const progress = total ? Math.round((doneCount / total) * 100) : 0;
 
   const activeMode = MODES.find((m) => m.id === mode);
 
@@ -245,13 +165,7 @@ function ScanPage() {
             {running ? "Scanning" : "Run scan"}
           </Button>
           {running ? (
-            <Button
-              variant="outline"
-              className="shrink-0"
-              onClick={() => {
-                stopRef.current = true;
-              }}
-            >
+            <Button variant="outline" className="shrink-0" onClick={stopRun}>
               <Square className="size-4" />
               Stop
             </Button>
@@ -268,6 +182,40 @@ function ScanPage() {
             </Link>
           ) : null}
         </p>
+      ) : null}
+
+      {showProgress ? (
+        <Frame mark className="p-5">
+          <Stamp>Live sweep</Stamp>
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-3 flex items-center justify-between text-xs text-muted"
+          >
+            <span>
+              {doneCount}/{total} · {activeScan?.name}
+            </span>
+            <span className="font-mono tabular-nums">{progress}%</span>
+          </div>
+          <Progress value={progress} className="mt-2" />
+          <ul aria-live="polite" className="mt-4 space-y-1.5">
+            {(activeScan?.probeIds ?? []).map((pid) => (
+              <li
+                key={pid}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="truncate text-muted">
+                  {PROBE_BY_ID[pid]?.name ?? pid}
+                </span>
+                {verdicts[pid] ? (
+                  <VerdictBadge verdict={verdicts[pid]!} />
+                ) : (
+                  <span className="text-xs text-subtle">queued</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Frame>
       ) : null}
 
       <fieldset disabled={running} className="min-w-0">
@@ -310,7 +258,7 @@ function ScanPage() {
             </Card>
           </div>
 
-          <div className="space-y-4">
+          {!showProgress ? (
             <Card className="p-5">
               <div className="space-y-1.5">
                 <Label htmlFor="scan-name">Scan name</Label>
@@ -388,39 +336,7 @@ function ScanPage() {
                 {selected.length} probes selected
               </p>
             </Card>
-
-            {running || live.some((l) => l.verdict) ? (
-              <Frame mark className="p-5">
-                <div
-                  role="status"
-                  className="flex items-center justify-between text-xs text-muted"
-                >
-                  <span>
-                    {done}/{selected.length}
-                  </span>
-                  <span className="font-mono tabular-nums">{progress}%</span>
-                </div>
-                <Progress value={progress} className="mt-2" />
-                <ul aria-live="polite" className="mt-4 space-y-1.5">
-                  {live.map((row) => (
-                    <li
-                      key={row.id}
-                      className="flex items-center justify-between gap-2 text-sm"
-                    >
-                      <span className="truncate text-muted">
-                        {PROBE_BY_ID[row.id]?.name ?? row.id}
-                      </span>
-                      {row.verdict ? (
-                        <VerdictBadge verdict={row.verdict} />
-                      ) : (
-                        <span className="text-xs text-subtle">queued</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </Frame>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </fieldset>
     </div>

@@ -290,6 +290,7 @@ function ScanReport() {
                     value={selected}
                     onChange={setAnalystId}
                     ids={live}
+                    connections={connections}
                   />
                   <Button
                     className="w-full"

@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Frame } from "@/components/frame";
+import { Progress } from "@/components/ui/progress";
 import { RelTime } from "@/components/rel-time";
 import { RiskRing } from "@/components/risk-ring";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useScanRunner } from "@/lib/scan/runner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +32,19 @@ function HistoryPage() {
   const scans = useScanStore((s) => s.scans);
   const deleteScan = useScanStore((s) => s.deleteScan);
   const [pending, setPending] = useState<ScanRecord | null>(null);
+  const runId = useScanRunner((s) => s.id);
+  const runDone = useScanRunner((s) => s.done);
+  const runTotal = useScanRunner((s) => s.total);
+  const runActive = useScanRunner((s) => s.running);
+
+  // A reload kills the in-memory loop; sweep records stuck at "running".
+  useEffect(() => {
+    if (runActive) return;
+    const st = useScanStore.getState();
+    st.scans
+      .filter((s) => s.status === "running")
+      .forEach((s) => st.patchScan(s.id, { status: "aborted" }));
+  }, [runActive]);
 
   return (
     <div className="space-y-6">
@@ -63,11 +78,31 @@ function HistoryPage() {
             return (
               <li key={scan.id}>
                 <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
-                  <RiskRing
-                    score={score}
-                    size={88}
-                    className="self-center sm:self-auto"
-                  />
+                  {scan.status === "running" ? (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className="w-24 shrink-0 self-center sm:self-auto"
+                    >
+                      <Progress
+                        value={
+                          runId === scan.id && runTotal
+                            ? Math.round((runDone / runTotal) * 100)
+                            : undefined
+                        }
+                      />
+                      <p className="mt-2 flex items-center gap-1.5 font-mono text-xs tracking-[0.14em] text-muted uppercase">
+                        <Loader2 aria-hidden className="size-3 animate-spin" />
+                        {runId === scan.id ? `${runDone}/${runTotal}` : "…"}
+                      </p>
+                    </div>
+                  ) : (
+                    <RiskRing
+                      score={score}
+                      size={88}
+                      className="self-center sm:self-auto"
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
@@ -93,15 +128,17 @@ function HistoryPage() {
                         Open
                       </Link>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-11 text-muted hover:text-critical"
-                      aria-label="Delete scan"
-                      onClick={() => setPending(scan)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {scan.status !== "running" ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-11 text-muted hover:text-critical"
+                        aria-label="Delete scan"
+                        onClick={() => setPending(scan)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ) : null}
                   </div>
                 </Card>
               </li>

@@ -4,6 +4,7 @@ export {
   MODEL_PRESETS,
   isProviderId,
   providerLabel,
+  providerDisplayLabel,
   resolveBaseUrl,
   presetsFor,
   resolvePresetModel,

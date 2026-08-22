@@ -5,6 +5,7 @@ import {
   FlaskConical,
   History,
   LayoutDashboard,
+  Loader2,
   Lock,
   Menu,
   Plus,
@@ -23,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { connectedIds, useVault } from "@/lib/providers";
+import { useScanRunner } from "@/lib/scan/runner";
 import { lockGate } from "@/lib/server/auth";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +106,10 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ready = connectedIds(useVault((s) => s.connections)).length;
+  const runId = useScanRunner((s) => s.id);
+  const runDone = useScanRunner((s) => s.done);
+  const runTotal = useScanRunner((s) => s.total);
+  const runActive = useScanRunner((s) => s.running);
   const pipLabel = ready
     ? `${ready} provider${ready === 1 ? "" : "s"} ready`
     : "No live provider";
@@ -129,16 +135,47 @@ export function AppShell({
         <Brand />
         <NavLinks orientation="row" />
         <div className="flex items-center gap-2">
+          {runActive && runId ? (
+            <Link
+              to="/scan"
+              role="status"
+              aria-live="polite"
+              className="flex h-9 items-center gap-2 border border-accent px-3 font-mono text-xs tracking-[0.14em] text-accent-text uppercase transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+            >
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              <span aria-hidden>
+                <span className="hidden sm:inline">Scanning </span>
+                {runDone}/{runTotal}
+              </span>
+              <span className="sr-only">
+                Scan running, {runDone} of {runTotal} probes complete. Continue
+                to live view.
+              </span>
+            </Link>
+          ) : null}
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 to="/settings"
-                aria-label={`Provider status: ${pipLabel}. Open settings`}
-                className="hidden size-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg sm:flex"
+                aria-label={`Providers: ${pipLabel}. Open settings`}
+                data-ready={ready > 0}
+                className="flex h-11 items-center gap-2 px-2 transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg sm:px-3"
               >
                 <span
-                  className={cn("size-1.5", ready ? "bg-low" : "bg-accent")}
+                  className={cn(
+                    "size-1.5 shrink-0",
+                    ready ? "bg-low" : "bg-accent",
+                  )}
+                  aria-hidden
                 />
+                <span
+                  className={cn(
+                    "hidden font-mono text-xs tracking-[0.14em] whitespace-nowrap uppercase lg:inline",
+                    ready ? "text-muted" : "text-accent-text",
+                  )}
+                >
+                  {ready ? `${ready} ready` : "no key"}
+                </span>
               </Link>
             </TooltipTrigger>
             <TooltipContent>{pipLabel}</TooltipContent>

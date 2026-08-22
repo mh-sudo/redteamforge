@@ -1,4 +1,4 @@
-import { isProviderId, providerLabel } from "@/lib/providers";
+import { isProviderId, providerDisplayLabel } from "@/lib/providers";
 import { PROBE_BY_ID } from "@/lib/probes/catalog";
 import { verdictFromDetection } from "@/lib/probes/detectors";
 import { sandboxRespond } from "@/lib/probes/sandbox";
@@ -98,7 +98,7 @@ export function resolveProbes(ids: string[]): Probe[] {
   return ids.map((id) => PROBE_BY_ID[id]).filter(Boolean);
 }
 
-export function liveTargetLabel(kind: TargetKind) {
+export function liveTargetLabel(kind: TargetKind, label?: string) {
   if (kind === "sandbox") return "Sandbox (vulnerable)";
-  return providerLabel(kind);
+  return providerDisplayLabel(kind, label);
 }

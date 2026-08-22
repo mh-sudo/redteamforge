@@ -5,8 +5,10 @@ import {
   PROVIDERS,
   connectedIds,
   presetsFor,
+  providerDisplayLabel,
   resolvePresetModel,
   useVault,
+  type Connection,
   type ProviderId,
 } from "@/lib/providers";
 import type { TargetKind } from "@/lib/probes/types";
@@ -47,15 +49,18 @@ export function TargetPicker({
           hint="Vulnerable ForgeBank sim. No API spend."
           onClick={() => pick("sandbox")}
         />
-        {live.map((id) => (
-          <TargetTile
-            key={id}
-            active={kind === id}
-            title={PROVIDERS[id].displayName}
-            hint={connections[id]?.model || PROVIDERS[id].defaultModel}
-            onClick={() => pick(id)}
-          />
-        ))}
+        {live.map((id) => {
+          const conn = connections[id];
+          return (
+            <TargetTile
+              key={id}
+              active={kind === id}
+              title={providerDisplayLabel(id, conn?.label)}
+              hint={conn?.model || PROVIDERS[id].defaultModel}
+              onClick={() => pick(id)}
+            />
+          );
+        })}
       </div>
       {live.length === 0 ? (
         <p className="text-xs text-muted">
@@ -97,11 +102,14 @@ export function ProviderSelect({
   value,
   onChange,
   ids,
+  connections,
   label = "Analyst provider",
 }: {
   value: ProviderId | "";
   onChange: (id: ProviderId) => void;
   ids: ProviderId[];
+  /** Saved connections, so options show the user's actual model + label. */
+  connections?: Partial<Record<ProviderId, Connection>>;
   label?: string;
 }) {
   if (ids.length === 0) return null;
@@ -115,10 +123,8 @@ export function ProviderSelect({
       >
         {ids.map((id) => (
           <option key={id} value={id}>
-            {PROVIDERS[id].displayName}
-            {PROVIDERS[id].defaultModel
-              ? ` · ${PROVIDERS[id].defaultModel}`
-              : ""}
+            {providerDisplayLabel(id, connections?.[id]?.label)} ·{" "}
+            {connections?.[id]?.model || PROVIDERS[id].defaultModel}
           </option>
         ))}
       </select>
