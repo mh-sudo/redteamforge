@@ -5,13 +5,14 @@
 <h1 align="center">RedTeamForge</h1>
 
 <p align="center">
-  <strong>RedTeamForge is a self-hosted AI red-teaming lab that scans LLM apps for prompt injection, jailbreaks, and OWASP LLM Top 10 — in the browser, with BYOK live targets and a leaky sandbox.</strong>
+  <strong>A self-hosted AI red-teaming lab in your browser.<br>
+  Fire a fixed arsenal of prompt-injection, jailbreak, and exfil probes at your own system prompt — zero-key leaky sandbox, BYOK live targets, OWASP + ATLAS tags on every finding.</strong>
 </p>
 
 <p align="center">
   Point it at OpenAI, Anthropic, Gemini, Grok, Ollama, or any OpenAI-compatible endpoint.<br>
-  Automated adversarial probes. Optional analyst for prioritization, explanation, and fixes.<br>
-  Fully self-hosted. No cloud dependency. Zero vendor lock-in.
+  Deterministic detectors score every reply <code>HIT / PARTIAL / BLOCKED</code> and tag findings with OWASP LLM Top 10 categories and MITRE ATLAS techniques.<br>
+  Fully self-hosted. No account required.
 </p>
 
 <p align="center">
@@ -36,55 +37,35 @@
 
 ![RedTeamForge dashboard with risk 76 critical and recent hits](docs/images/dashboard.png)
 
-**[Play the 6-second intro](docs/demo/hero.mp4)** · cinematic forge mark, steel light, targeting reticle.
+## What this is
 
-## What is RedTeamForge?
+RedTeamForge tests how a `model + system prompt` pair holds up under attack. You choose a target and the system prompt under test, 26 hand-built payloads fire one by one as user messages, and deterministic detectors score each reply:
 
-RedTeamForge is an open-source, self-hosted AI red-teaming lab for people who ship LLM apps and need to test prompt injection, jailbreaks, data exfiltration, and OWASP LLM Top 10 — without a vendor account or a Python scanner toolchain. It runs in the browser: 26 Garak-style probes fire at a leaky sandbox or at a BYOK live model (OpenAI, Anthropic, Gemini, Grok, Ollama, and OpenAI-compatible endpoints), then detectors score HIT / PARTIAL / BLOCKED and map every finding to OWASP and MITRE ATLAS.
+| Stage    | What happens                                                                      |
+| -------- | --------------------------------------------------------------------------------- |
+| Target   | ForgeBank sandbox (deterministic, no API keys) or a BYOK live endpoint            |
+| Payload  | Fixed catalog: prompt injection, jailbreaks, exfiltration, agency, output, RAG, … |
+| Detector | Planted-secret match, keyword needles, regex, refusal patterns                    |
+| Verdict  | HIT / PARTIAL / BLOCKED, tagged OWASP + MITRE ATLAS, rolled into a risk score     |
 
-Unlike wiring up Garak, Promptfoo, or PyRIT from scratch, RedTeamForge is a working lab you open at `localhost:8080`, run against your own system prompt, and export as Markdown or JSON.
+### What this isn't
 
-## Why RedTeamForge?
+- **Not multi-turn.** Every probe is a single user message. No conversation state, agent loop, or tool executor — agency and RAG probes simulate their scenarios inside the payload text.
+- **Not semantic judgment.** Detectors are deterministic string matching, so verdicts are reproducible. Treat the risk score as triage for a human reviewer, not an audit grade.
+- **Not an app scanner.** It tests the chat endpoint you point it at — not your source code, infrastructure, or retrieval pipeline.
 
-LLM apps fail in ways SAST never sees. A single "ignore previous instructions" turn can dump a system prompt, mint a refund, or echo XSS into a renderer. Job posts now ask for Garak, Promptfoo, PyRIT, prompt injection, RAG security, and agent security. RedTeamForge is the lab you can run against your own model in a browser.
-
-| You need                             | RedTeamForge does                                              |
-| ------------------------------------ | -------------------------------------------------------------- |
-| Prompt-injection / jailbreak scanner | 26 Garak-style probes, 8 packs                                 |
-| OWASP LLM Top 10 mapping             | Every probe tagged LLM01–LLM10 (2025)                          |
-| MITRE ATLAS mapping                  | Technique IDs on every finding                                 |
-| Live target                          | BYOK presets (OpenAI, Anthropic, Gemini, xAI, Groq, Ollama, …) |
-| Demo without keys                    | Deterministic leaky sandbox (ForgeBank)                        |
-| Prioritization                       | Optional analyst: why it matters, exploitability, remediation  |
-| Reports                              | Markdown + JSON export, local scan history                     |
-| Deployment                           | npm, Docker Compose, no vendor account required                |
-
-Sandbox scans never leave the machine. Live scans only go where you pointed them.
-
-### RedTeamForge vs Garak vs Promptfoo vs PyRIT
-
-|                  | RedTeamForge                                                          | [Garak](https://github.com/NVIDIA/garak) | [Promptfoo](https://github.com/promptfoo/promptfoo) | [PyRIT](https://github.com/Azure/PyRIT) |
-| ---------------- | --------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------- | --------------------------------------- |
-| Runtime          | TypeScript (Node 22), no Python                                       | Python CLI                               | Node                                                | Python                                  |
-| Interface        | Browser lab                                                           | CLI                                      | CLI + web evals                                     | Python APIs / notebooks                 |
-| Demo target      | Built-in leaky sandbox (ForgeBank)                                    | Bring your own                           | Bring your own                                      | Bring your own                          |
-| Live providers   | BYOK: OpenAI, Anthropic, Gemini, xAI, Groq, Ollama, OpenAI-compatible | Yes                                      | Yes                                                 | Yes                                     |
-| Finding tags     | OWASP LLM Top 10 + MITRE ATLAS on every probe                         | Probe taxonomies                         | Eval / red-team plugins                             | Attack strategies                       |
-| Reports          | In-app + Markdown/JSON, optional analyst                              | CLI reports                              | Eval reports                                        | Custom / notebooks                      |
-| Account required | None                                                                  | None                                     | None (cloud optional)                               | None                                    |
-
-RedTeamForge is not affiliated with Garak, Promptfoo, PyRIT, OWASP, or MITRE.
+Coming from [Garak](https://github.com/NVIDIA/garak), [Promptfoo](https://github.com/promptfoo/promptfoo), or [PyRIT](https://github.com/Azure/PyRIT)? Those tools go deeper: generated attack modules, multi-turn campaigns, CI eval integration, research orchestration — use them when you need that. RedTeamForge trades depth for setup speed: clone, `npm run dev`, scan the built-in sandbox with no account and no API key, export the report. It is inspired by those projects and taxonomies and not affiliated with them.
 
 ## Features
 
-- **26 Garak-style probes, 8 packs** — prompt injection, jailbreaks, exfiltration, excessive agency, output handling, RAG, misinformation, unbounded use
-- **OWASP LLM Top 10 (2025) + MITRE ATLAS** — every finding ships with category and technique IDs (e.g. AML.T0051, AML.T0054, AML.T0057)
-- **Leaky sandbox (ForgeBank)** — deterministic demo target so you can scan with no API keys
-- **BYOK live targets** — OpenAI, Anthropic, Gemini, xAI, Groq, Mistral, DeepSeek, Together, Fireworks, OpenRouter, Ollama, or a custom OpenAI-compatible endpoint
-- **Optional analyst** — ranks hits, explains exploitability, writes hardening notes
-- **Prompt lab** — fire one payload, inspect the raw completion
+- **26 probes across 8 packs** — prompt injection, jailbreaks, data exfiltration, excessive agency, output handling, RAG, misinformation, unbounded consumption
+- **OWASP LLM Top 10 (2025) + MITRE ATLAS tags** — category and technique IDs on every finding
+- **Zero-key demo target** — deterministic leaky sandbox (ForgeBank) with planted fixtures, so detectors are learnable
+- **BYOK live targets** — hosted presets plus Ollama and any custom OpenAI-compatible endpoint
+- **Optional analyst** — one capped call that ranks hits, explains exploitability, and writes hardening notes
+- **Prompt lab** — fire a single payload and inspect the raw completion
 - **Markdown + JSON export** — scan history stays in this browser (`localStorage`)
-- **Self-hosted** — `npm run dev` or Docker Compose; keys stay in the browser vault
+- **Self-hosted** — `npm run dev` or Docker Compose; optional shared-password gate for VPS deploys
 
 ## Quick Start
 
@@ -100,18 +81,18 @@ npm run dev
 
 Open [http://localhost:8080](http://localhost:8080).
 
-1. **New scan** → leave target on **Sandbox** → **Run scan**.
+1. **New scan** → leave the target on **Sandbox** → **Run scan**.
 2. Open the report. Expand a HIT. Copy payload / response.
-3. **Analyze** (optional) after connecting a provider in **Settings**. The analyst ranks hits and writes hardening notes.
+3. **Analyze** (optional) after connecting a provider in **Settings**.
 4. Export Markdown or JSON.
 
-No sign-in. Scan history lives in this browser (`localStorage`). Provider keys stay in this browser and are sent only with the scan you run.
+No sign-up. Scan history stays in this browser.
 
-### Live providers
+### Live targets
 
-Open **Settings**, pick a preset (OpenAI, Anthropic, Gemini, xAI, Groq, Mistral, DeepSeek, Together, Fireworks, OpenRouter, Ollama, or Custom), paste your key. Scan and Lab then list only connected providers. Keys are not uploaded except as the `Authorization` / `x-api-key` header to that provider.
+Open **Settings** and connect one of twelve presets: OpenAI, Anthropic, Google (Gemini), xAI, Groq, Mistral, DeepSeek, Together, Fireworks, OpenRouter, Ollama, or Custom. Paste a key, confirm the model, and Scan and Lab list that provider from then on.
 
-Ollama and Custom need a base URL. HTTP is allowed on localhost; anything else must be HTTPS. Live calls are user-initiated and token-capped.
+Keys stay in this browser vault (`localStorage`) and are sent only as the `Authorization` / `x-api-key` header on calls you trigger. Probe calls are capped at 280 completion tokens, analyst calls at 1400. Base URLs must be HTTPS unless the host is localhost.
 
 ## Docker
 
@@ -119,13 +100,7 @@ Ollama and Custom need a base URL. HTTP is allowed on localhost; anything else m
 docker compose up --build
 ```
 
-Then open [http://localhost:8080](http://localhost:8080). Connect providers in **Settings** (browser vault). No server-side API keys.
-
-Image is Node 22, production preview, port 8080. Rebuild after probe or UI changes:
-
-```bash
-docker compose up --build
-```
+Then open [http://localhost:8080](http://localhost:8080) and connect providers in **Settings**. The image is Node 22 serving the production preview on port 8080. Rebuild after probe or UI changes.
 
 ## Screenshots
 
@@ -147,7 +122,7 @@ Probe library and history.
 | --------------------------------------------------------- | ---------------------------------------------------- |
 | ![Probe library filtered by pack](docs/images/probes.png) | ![History with risk scores](docs/images/history.png) |
 
-Mobile cockpit.
+Mobile.
 
 <p align="center">
   <img src="docs/images/dashboard-mobile.png" alt="RedTeamForge dashboard on a phone" width="32%">
@@ -170,41 +145,28 @@ RedTeamForge ships 26 probes across 8 packs. Each payload is educational and aim
 | Misinformation    | LLM09         | Confident fabrication, false authority                     |
 | Unbounded use     | LLM10         | Repeat-forever and token amplification                     |
 
-MITRE ATLAS technique IDs ship on every finding (e.g. AML.T0051 prompt injection, AML.T0054 jailbreak, AML.T0057 LLM data leak).
+MITRE ATLAS technique IDs ship on every finding (e.g. AML.T0051 prompt injection, AML.T0054 jailbreak, AML.T0057 LLM data leak). A model/tool-fingerprint probe (LLM03, AML.T0006) rides in the exfiltration pack.
 
-A **quick pack** of 8 high-signal probes is the default campaign. Toggle packs off to go full-sweep.
-
-## Scripts
-
-| Command             | What it does                 |
-| ------------------- | ---------------------------- |
-| `npm run dev`       | Dev server on `0.0.0.0:8080` |
-| `npm run build`     | Production build             |
-| `npm run preview`   | Serve the production build   |
-| `npm run typecheck` | `tsc --noEmit`               |
-| `npm test`          | Workspace unit tests         |
-| `npm run lint`      | ESLint                       |
+A **quick pack** of 8 high-signal probes is the default campaign. **Full** sweeps all 26 probes; **Custom** narrows by pack.
 
 ## How a scan works
 
 ```
 Target  →  probe payload  →  completion  →  detector  →  verdict
- sandbox | live provider     catalog        model         leak / keyword / regex / refusal
+  sandbox | live provider     catalog        model         leak / keyword / regex / refusal
                                                               HIT | PARTIAL | BLOCKED
 ```
 
-1. You choose a target and a system prompt under test (ForgeBank ships as the demo policy).
-2. Selected probes fire one by one. The sandbox is deterministic so detectors are learnable. Live targets are the real test.
-3. Detectors look for planted secrets, policy breaks, XSS, and missing refusals.
-4. Risk score rolls hits by severity. OWASP coverage is counted per category.
-5. Optional analyst call sends compact findings (not your full prompt dump) to a connected model and writes executive summary, exploitability, and hardening steps.
+1. Choose a target and the system prompt under test (ForgeBank ships as the demo policy).
+2. Selected probes fire one by one. The sandbox responds deterministically; live targets give the real test.
+3. Detectors look for planted secrets, policy breaks, dangerous output, and missing refusals.
+4. Hits roll into a weighted risk score (critical 28 · high 16 · medium 8 · low 3, partials count 40%). OWASP coverage is tallied per category.
+5. Optional analyst call sends compact findings (never your full prompt dump) to a connected model and returns executive summary, exploitability, remediation, and residual risk as JSON.
 6. History, Markdown, and JSON stay on the box.
 
 ## Sample report
 
-The checked-in ForgeBank baseline is a complete 8-probe sweep (risk **76 / critical**, 4 hits). Read the write-up:
-
-**[docs/sample-report.md](docs/sample-report.md)**
+The checked-in ForgeBank baseline is a complete 8-probe sweep (risk **76 / critical**, 4 hits): **[docs/sample-report.md](docs/sample-report.md)**.
 
 Export the same shape from any scan: **Export → Markdown** or **JSON**.
 
@@ -212,11 +174,11 @@ Export the same shape from any scan: **Export → Markdown** or **JSON**.
 
 - [TanStack Start](https://tanstack.com/start) + React 19 + Vite 8
 - Tailwind v4, Radix primitives
-- Zustand persist (scan archive in the browser)
-- BYOK live completions (OpenAI-compatible + Anthropic Messages) + optional analyst
+- Zustand persist (scan archive and key vault in the browser)
+- BYOK completions: OpenAI Chat Completions format + Anthropic Messages format
 - Garak-inspired TypeScript probe engine (no Python runtime required)
 
-Inspired by [Garak](https://github.com/NVIDIA/garak), [Promptfoo](https://github.com/promptfoo/promptfoo), [PyRIT](https://github.com/Azure/PyRIT), [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/), and [MITRE ATLAS](https://atlas.mitre.org/). RedTeamForge is not affiliated with those projects.
+Inspired by [Garak](https://github.com/NVIDIA/garak), [Promptfoo](https://github.com/promptfoo/promptfoo), [PyRIT](https://github.com/Azure/PyRIT), [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/), and [MITRE ATLAS](https://atlas.mitre.org). RedTeamForge is not affiliated with those projects.
 
 ## Project layout
 
@@ -230,47 +192,37 @@ src/
   lib/server/auth.ts   optional AUTH_PASSWORD gate
   routes/              dashboard, scan, lab, probes, history, report, settings, login
 docs/
-  cover.jpg            OG / GitHub hero
-  demo/hero.mp4        6s intro
   images/              product screenshots
   sample-report.md     ForgeBank baseline
 ```
 
 ## Configuration
 
-| Variable        | Required | Purpose                                                               |
-| --------------- | -------- | --------------------------------------------------------------------- |
-| `HOST`          | No       | Bind address (Docker sets `0.0.0.0`)                                  |
-| `PORT`          | No       | Listen port (default 8080 in Docker)                                  |
-| `AUTH_PASSWORD` | No       | Shared page password. Unset = open. Set on a VPS to require `/login`. |
+| Variable             | Required | Purpose                                                               |
+| -------------------- | -------- | --------------------------------------------------------------------- |
+| `HOST`               | No       | Bind address (Docker sets `0.0.0.0`)                                  |
+| `PORT`               | No       | Listen port (default 8080 in Docker)                                  |
+| `AUTH_PASSWORD`      | No       | Shared page password. Unset = open. Set on a VPS to require `/login`. |
+| `AUTH_COOKIE_SECURE` | No       | Set to `1` to force the `Secure` flag on the gate cookie.             |
 
 Copy [`.env.example`](.env.example). Never commit a real `.env`.
 
 ## FAQ
 
-**How do I password-protect a VPS deploy?**
-Set `AUTH_PASSWORD` in the environment (or Docker Compose). The UI redirects to `/login` until that password is entered. Unset it for an open local lab. Put HTTPS in front of the instance.
-
 **Does RedTeamForge work without an API key?**
-Yes. RedTeamForge includes a deterministic leaky sandbox (ForgeBank). Leave the target on Sandbox, run a scan, and you get hits, detectors, and a report with no provider key.
+Yes. Leave the target on Sandbox and run a scan — ForgeBank returns scripted leaks and refusals, so detectors, scores, and reports work with zero keys.
 
-**How is RedTeamForge different from Garak, Promptfoo, or PyRIT?**
-RedTeamForge is a TypeScript browser lab with a built-in sandbox, OWASP LLM Top 10 + MITRE ATLAS tags on every probe, and optional in-app analyst reports. Garak is a Python CLI scanner, Promptfoo is a Node eval/red-team runner, and PyRIT is a Python research toolkit. Use RedTeamForge when you want a self-hosted UI you can point at your own model without a Python toolchain.
+**Where do my prompts, scans, and keys go?**
+Nowhere, unless you aim them somewhere. Sandbox scans never leave the machine. Live scans send one request per probe to the provider you selected. Keys sit in your browser's `localStorage` and travel only as that provider's auth header.
 
-**Does RedTeamForge send my prompts to the cloud?**
-Sandbox scans never leave the machine. Live scans send completions only to the provider you selected in Settings. API keys stay in the browser vault and are sent only as that provider's `Authorization` / `x-api-key` header.
+**How do I password-protect a VPS deploy?**
+Set `AUTH_PASSWORD` in the environment (or Docker Compose). The UI redirects to `/login` until the password is entered; unset means an open local lab. Put HTTPS in front either way.
 
-**Can I scan OpenAI, Anthropic, Gemini, Grok, and Ollama?**
-Yes. RedTeamForge is a BYOK scanner: connect OpenAI, Anthropic, Gemini, xAI (Grok), Groq, Mistral, DeepSeek, Together, Fireworks, OpenRouter, Ollama, or any OpenAI-compatible endpoint, then run the same probe catalog against that live target.
+**Which platforms are supported?**
+Anywhere Node.js 22+ or Docker runs — macOS (including Apple Silicon), Windows, Linux.
 
-**Does RedTeamForge run on macOS, Windows, and Linux?**
-Yes. RedTeamForge needs Node.js 22+ or Docker. That includes Apple Silicon. Open [http://localhost:8080](http://localhost:8080) after `npm run dev` or `docker compose up --build`.
-
-**Is RedTeamForge free? What's the license?**
-RedTeamForge is free and open source under the [MIT License](LICENSE). You can use it commercially. No vendor account is required.
-
-**Is RedTeamForge affiliated with Garak, Promptfoo, or OWASP?**
-No. RedTeamForge is an independent project inspired by those tools and taxonomies. It is not affiliated with NVIDIA Garak, Promptfoo, Microsoft PyRIT, OWASP, or MITRE.
+**Is it free? What's the license?**
+Free and open source under the [MIT License](LICENSE); commercial use allowed. Not affiliated with NVIDIA Garak, Promptfoo, Microsoft PyRIT, OWASP, or MITRE.
 
 ## Responsible use
 
@@ -278,7 +230,7 @@ RedTeamForge is a defensive lab. Use it only on systems you own or have written 
 
 - Payloads are for evaluating _your_ model, prompt, or agent.
 - Do not aim this at third-party production assistants you do not control.
-- Sandbox secrets (`482917`, `sk_live_forge_demo_9f3a`, `FORGE_POLICY_TOKEN`) are fake fixtures. Do not treat them as real credentials.
+- Sandbox secrets (`482917`, `sk_live_forge_demo_9f3a`, `FORGE_POLICY_TOKEN`) are fake fixtures, not credentials.
 - Live completions may contain model output that looks like exploits. Handle reports as sensitive.
 
 If you find a vulnerability _in RedTeamForge itself_, do not open a public issue with a working exploit. See [Contributing](#contributing).

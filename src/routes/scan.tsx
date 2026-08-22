@@ -10,7 +10,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { VerdictBadge } from "@/components/severity-badge";
 import {
@@ -32,12 +31,20 @@ import { useScanStore } from "@/lib/scan/store";
 
 export const Route = createFileRoute("/scan")({ component: ScanPage });
 
-const QUICK_PACKS: ProbePack[] = [
-  "injection",
-  "jailbreak",
-  "exfil",
-  "agency",
-  "output",
+type PackMode = "quick" | "full" | "custom";
+
+const MODES: { id: PackMode; label: string; caption: string }[] = [
+  {
+    id: "quick",
+    label: "Quick",
+    caption: "8 high-signal probes across 5 packs.",
+  },
+  {
+    id: "full",
+    label: "Full",
+    caption: "Full sweep — all 26 probes across all 8 packs.",
+  },
+  { id: "custom", label: "Custom", caption: "Narrow the full set by pack." },
 ];
 
 function ScanPage() {
@@ -49,8 +56,8 @@ function ScanPage() {
   const [kind, setKind] = useState<TargetKind>("sandbox");
   const [model, setModel] = useState("sandbox-forge");
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
-  const [quick, setQuick] = useState(true);
-  const [packs, setPacks] = useState<ProbePack[]>(QUICK_PACKS);
+  const [mode, setMode] = useState<PackMode>("quick");
+  const [packs, setPacks] = useState<ProbePack[]>(ALL_PACKS);
   const [name, setName] = useState("ForgeBank assistant");
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
@@ -58,13 +65,30 @@ function ScanPage() {
   const alive = useRef(true);
 
   const selected = useMemo(() => {
-    return PROBES.filter((p) => packs.includes(p.pack) && (!quick || p.quick));
-  }, [packs, quick]);
+    if (mode === "quick") return PROBES.filter((p) => p.quick);
+    if (mode === "full") return PROBES;
+    return PROBES.filter((p) => packs.includes(p.pack));
+  }, [mode, packs]);
 
   function togglePack(pack: ProbePack) {
     setPacks((cur) =>
       cur.includes(pack) ? cur.filter((p) => p !== pack) : [...cur, pack],
     );
+  }
+
+  function selectPack(pack: ProbePack) {
+    if (mode === "custom") {
+      togglePack(pack);
+      return;
+    }
+    const base =
+      mode === "full"
+        ? [...ALL_PACKS]
+        : ALL_PACKS.filter((p) => PROBES.some((x) => x.pack === p && x.quick));
+    setPacks(() =>
+      base.includes(pack) ? base.filter((p) => p !== pack) : [...base, pack],
+    );
+    setMode("custom");
   }
 
   async function run() {
@@ -74,10 +98,6 @@ function ScanPage() {
     }
     if (kind !== "sandbox" && !connectionReady(connections, kind)) {
       toast("Connect this provider in Settings");
-      return;
-    }
-    if (kind !== "sandbox" && selected.length > 12) {
-      toast("Live scans are capped at 12 probes");
       return;
     }
 
@@ -166,6 +186,8 @@ function ScanPage() {
     ? Math.round((done / selected.length) * 100)
     : 0;
 
+  const activeMode = MODES.find((m) => m.id === mode);
+
   return (
     <div className="space-y-6">
       <header className="rise flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -175,7 +197,8 @@ function ScanPage() {
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-muted">
             Choose a target, keep or edit the system prompt under test, then
-            fire a probe pack. Live calls are user-initiated and capped.
+            fire a probe pack. Live calls are user-initiated; probe responses
+            are token-capped.
           </p>
         </div>
         <Button
@@ -238,35 +261,56 @@ function ScanPage() {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-            <div className="mt-4 flex min-h-11 items-center justify-between gap-3">
-              <Label htmlFor="quick-pack" className="cursor-pointer">
-                <span className="block text-sm font-medium">Quick pack</span>
-                <span className="block text-xs font-normal text-muted">
-                  Eight high-signal probes
-                </span>
-              </Label>
-              <Switch
-                id="quick-pack"
-                checked={quick}
-                onCheckedChange={setQuick}
-              />
+            <div
+              className="mt-4 grid grid-cols-3 gap-1"
+              role="group"
+              aria-label="Probe pack selection"
+            >
+              {MODES.map((m) => (
+                <Button
+                  key={m.id}
+                  size="sm"
+                  variant={mode === m.id ? "default" : "secondary"}
+                  aria-pressed={mode === m.id}
+                  onClick={() => setMode(m.id)}
+                >
+                  {m.label}
+                  <span className="font-mono text-xs opacity-70">
+                    {m.id === "custom"
+                      ? packs.length
+                      : m.id === "quick"
+                        ? 8
+                        : 26}
+                  </span>
+                </Button>
+              ))}
             </div>
+            <p className="mt-2 text-xs text-muted">{activeMode?.caption}</p>
+
             <div className="mt-4 space-y-2">
               {ALL_PACKS.map((pack) => {
                 const meta = PACK_META[pack];
-                const count = PROBES.filter(
-                  (p) => p.pack === pack && (!quick || p.quick),
-                ).length;
-                if (count === 0) return null;
+                const count =
+                  mode === "quick"
+                    ? PROBES.filter((p) => p.pack === pack && p.quick).length
+                    : PROBES.filter((p) => p.pack === pack).length;
+                const checked =
+                  mode === "full"
+                    ? true
+                    : mode === "quick"
+                      ? count > 0
+                      : packs.includes(pack);
                 return (
                   <label
                     key={pack}
-                    className="flex min-h-11 cursor-pointer items-start gap-3 bg-elevated px-3 py-2.5"
+                    className={`flex min-h-11 cursor-pointer items-start gap-3 bg-elevated px-3 py-2.5${
+                      mode === "quick" && count === 0 ? " opacity-50" : ""
+                    }`}
                   >
                     <Checkbox
                       className="mt-0.5"
-                      checked={packs.includes(pack)}
-                      onCheckedChange={() => togglePack(pack)}
+                      checked={checked}
+                      onCheckedChange={() => selectPack(pack)}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">

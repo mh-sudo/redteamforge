@@ -5,7 +5,7 @@ import {
   resolveBaseUrl,
   type ProviderId,
 } from "@/lib/providers";
-import { assertGate } from "@/lib/server/auth";
+import { assertGate } from "@/lib/server/auth.server";
 
 const MAX_PROMPT = 8000;
 const MAX_PAYLOAD = 6000;
