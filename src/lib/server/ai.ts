@@ -216,9 +216,50 @@ async function chatCompletions(opts: {
     }
     const json = (await res.json()) as {
       model?: string;
-      choices?: { message?: { content?: string } }[];
+      usage?: { completion_tokens?: number; reasoning_tokens?: number };
+      choices?: {
+        finish_reason?: string;
+        message?: { content?: string | null; reasoning_content?: string };
+        text?: string;
+      }[];
     };
-    const text = json.choices?.[0]?.message?.content ?? "";
+
+    // Reasoning models often burn the whole budget on thinking and return
+    // empty `content`, parking the visible text in `reasoning_content`.
+    // Legacy completions-style endpoints use `choices[0].text`.
+    const choice = json.choices?.[0];
+    const raw =
+      choice?.message?.content ||
+      choice?.message?.reasoning_content ||
+      choice?.text ||
+      "";
+    const text = typeof raw === "string" ? raw : "";
+
+    if (!text.trim()) {
+      const finish = choice?.finish_reason ?? "unknown";
+      const used = json.usage;
+      console.error(
+        "[chatCompletions] empty completion from",
+        opts.url,
+        "model:",
+        json.model ?? opts.model,
+        "finish_reason:",
+        finish,
+        "usage:",
+        JSON.stringify(used ?? {}),
+        "raw:",
+        JSON.stringify(json).slice(0, 800),
+      );
+      return {
+        ok: false as const,
+        error:
+          `Target returned an empty completion (finish_reason=${finish}).` +
+          (finish === "length"
+            ? " The model spent the entire token budget without answering — this is common with reasoning models. Try a non-reasoning model."
+            : ""),
+        model: json.model || opts.model,
+      };
+    }
     return { ok: true as const, text, model: json.model || opts.model };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
@@ -258,12 +299,30 @@ async function anthropicMessages(opts: {
     }
     const json = (await res.json()) as {
       model?: string;
+      stop_reason?: string;
       content?: { type?: string; text?: string }[];
     };
     const text =
       json.content?.find((b) => b.type === "text")?.text ??
       json.content?.[0]?.text ??
       "";
+    if (!text.trim()) {
+      console.error(
+        "[anthropicMessages] empty completion from",
+        opts.url,
+        "model:",
+        json.model ?? opts.model,
+        "stop_reason:",
+        json.stop_reason ?? "unknown",
+        "raw:",
+        JSON.stringify(json).slice(0, 800),
+      );
+      return {
+        ok: false as const,
+        error: `Target returned an empty completion (stop_reason=${json.stop_reason ?? "unknown"}).`,
+        model: json.model || opts.model,
+      };
+    }
     return { ok: true as const, text, model: json.model || opts.model };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
