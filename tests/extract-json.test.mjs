@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractJson } from "../src/lib/server/extract-json.mjs";
+import { extractJson } from "../src/lib/ai/extract-json.mjs";
 
 const valid = {
   executiveSummary: "Leaky.",
@@ -56,7 +56,7 @@ test("returns null when object never opens", () => {
 
 test("prefers the first fence that actually parses", () => {
   const t =
-    "Example:\n```js\nconst x = {not: json};\n```\nAnswer:\n```json\n{\"ok\":true}\n```";
+    'Example:\n```js\nconst x = {not: json};\n```\nAnswer:\n```json\n{"ok":true}\n```';
   assert.deepEqual(extractJson(t), { ok: true });
 });
 

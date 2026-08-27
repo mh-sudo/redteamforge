@@ -32,7 +32,7 @@ import {
   type ProviderId,
 } from "@/lib/providers";
 import { useScanStore } from "@/lib/scan/store";
-import { analyzeScan } from "@/lib/server/ai";
+import { analyzeScan } from "@/lib/ai/client";
 import { downloadText, slugify } from "@/lib/utils";
 
 export const Route = createFileRoute("/scans/$scanId")({

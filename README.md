@@ -66,6 +66,7 @@ Coming from [Garak](https://github.com/NVIDIA/garak), [Promptfoo](https://github
 - **Prompt lab** — fire a single payload and inspect the raw completion
 - **Markdown + JSON export** — scan history stays in this browser (`localStorage`)
 - **Self-hosted** — `npm run dev` or Docker Compose; optional shared-password gate for VPS deploys
+- **Hosted demo** — static browser-only build published to GitHub Pages; BYOK calls go straight from your browser to the provider
 
 ## Quick Start
 
@@ -92,7 +93,7 @@ No sign-up. Scan history stays in this browser.
 
 Open **Settings** and connect one of twelve presets: OpenAI, Anthropic, Google (Gemini), xAI, Groq, Mistral, DeepSeek, Together, Fireworks, OpenRouter, Ollama, or Custom. Paste a key, confirm the model, and Scan and Lab list that provider from then on.
 
-Keys stay in this browser vault (`localStorage`) and are sent only as the `Authorization` / `x-api-key` header on calls you trigger. Probe calls are capped at 280 completion tokens, analyst calls at 1400. Base URLs must be HTTPS unless the host is localhost.
+Keys stay in this browser vault (`localStorage`) and are sent only as the `Authorization` / `x-api-key` header on calls you trigger. Probe calls are capped at 280 completion tokens, analyst calls at 2400. Base URLs must be HTTPS unless the host is localhost.
 
 ## Docker
 
@@ -101,6 +102,22 @@ docker compose up --build
 ```
 
 Then open [http://localhost:8080](http://localhost:8080) and connect providers in **Settings**. The image is Node 22 serving the production preview on port 8080. Rebuild after probe or UI changes.
+
+## Hosted demo
+
+A browser-only build of this app runs at **[mh-sudo.github.io/redteamforge](https://mh-sudo.github.io/redteamforge/)** — deployed automatically by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) on every push to `main`.
+
+Same app, one architectural difference: there is no server. GitHub Pages serves plain files, so probe and analyst calls go **directly from your browser** to the endpoint you connect, carrying your key as the auth header — nothing passes through any intermediate server. Scan history and keys still live only in `localStorage`. The optional password gate does not exist in this build (there is no server left to protect).
+
+Because calls are browser-direct, the provider must allow cross-origin requests (CORS):
+
+| Provider preset                                                               | Works from the hosted build                                                                                |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| OpenAI, Google, xAI, Groq, Mistral, DeepSeek, Together, Fireworks, OpenRouter | Yes                                                                                                        |
+| Anthropic                                                                     | Yes — the build sends Anthropic's documented `anthropic-dangerous-direct-browser-access` header            |
+| Ollama / custom self-hosted endpoints                                         | Only if that server sends CORS headers — e.g. start Ollama with `OLLAMA_ORIGINS=https://mh-sudo.github.io` |
+
+**Publishing your own fork:** repo Settings → Pages → Source **GitHub Actions**, then push to `main`. To inspect the same bundle locally: `npm run build:static` (output lands in `.output/public`).
 
 ## Screenshots
 
@@ -198,13 +215,13 @@ docs/
 
 ## Configuration
 
-| Variable                     | Required | Purpose                                                                                      |
-| ---------------------------- | -------- | -------------------------------------------------------------------------------------------- |
-| `HOST`                       | No       | Bind address (localhost by default; Docker sets `0.0.0.0`)                                   |
-| `PORT`                       | No       | Listen port (default 8080 in Docker)                                                         |
-| `AUTH_PASSWORD`              | No       | Shared page password. Unset = open. Set on a VPS to require `/login`.                         |
-| `AUTH_COOKIE_SECURE`         | No       | Set to `1` to force the `Secure` flag on the gate cookie.                                    |
-| `RTF_ALLOW_PRIVATE_ENDPOINTS`| No       | Allow https provider endpoints on private/LAN addresses (self-hosted models). Implied when `AUTH_PASSWORD` is set. |
+| Variable                      | Required | Purpose                                                                                                            |
+| ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `HOST`                        | No       | Bind address (localhost by default; Docker sets `0.0.0.0`)                                                         |
+| `PORT`                        | No       | Listen port (default 8080 in Docker)                                                                               |
+| `AUTH_PASSWORD`               | No       | Shared page password. Unset = open. Set on a VPS to require `/login`.                                              |
+| `AUTH_COOKIE_SECURE`          | No       | Set to `1` to force the `Secure` flag on the gate cookie.                                                          |
+| `RTF_ALLOW_PRIVATE_ENDPOINTS` | No       | Allow https provider endpoints on private/LAN addresses (self-hosted models). Implied when `AUTH_PASSWORD` is set. |
 
 Copy [`.env.example`](.env.example). Never commit a real `.env`.
 
@@ -240,6 +257,9 @@ Set `AUTH_PASSWORD` in the environment (or Docker Compose). The UI redirects to 
 
 **Which platforms are supported?**
 Anywhere Node.js 22+ or Docker runs — macOS (including Apple Silicon), Windows, Linux.
+
+**Why does my Ollama / self-hosted target fail on the hosted demo?**
+Browsers block cross-origin calls unless the endpoint sends CORS headers. Start Ollama with `OLLAMA_ORIGINS=https://mh-sudo.github.io` (or your fork's Pages URL), configure CORS on your vLLM/proxy, or use the self-hosted build — there the server makes the call for you.
 
 **Is it free? What's the license?**
 Free and open source under the [MIT License](LICENSE); commercial use allowed. Not affiliated with NVIDIA Garak, Promptfoo, Microsoft PyRIT, OWASP, or MITRE.

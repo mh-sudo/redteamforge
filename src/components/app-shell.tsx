@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/tooltip";
 import { connectedIds, useVault } from "@/lib/providers";
 import { useScanRunner, resumeInterruptedScans } from "@/lib/scan/runner";
-import { lockGate } from "@/lib/server/auth";
+import { lockGate } from "@/lib/gate";
+import { BASE_PATH } from "@/lib/env";
+import { ByokNotice } from "@/components/byok-notice";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -128,7 +130,7 @@ export function AppShell({
   async function lock() {
     try {
       await lockGate();
-      window.location.href = "/login";
+      window.location.href = `${BASE_PATH}login`;
     } catch (err) {
       console.error("[app-shell] lock failed", err);
       toast.error("Lock failed — check your connection and try again.");
@@ -220,6 +222,7 @@ export function AppShell({
           </Button>
         </div>
       </header>
+      <ByokNotice />
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="bg-bg">

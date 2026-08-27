@@ -30,7 +30,7 @@ import {
   type ProviderId,
 } from "@/lib/providers";
 import { cn } from "@/lib/utils";
-import { runLiveProbe } from "@/lib/server/ai";
+import { runLiveProbe } from "@/lib/ai/client";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,

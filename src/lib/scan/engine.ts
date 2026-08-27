@@ -3,7 +3,7 @@ import { PROBE_BY_ID } from "@/lib/probes/catalog";
 import { verdictFromDetection } from "@/lib/probes/detectors";
 import { sandboxRespond } from "@/lib/probes/sandbox";
 import type { Probe, ProbeResult, TargetKind } from "@/lib/probes/types";
-import { runLiveProbe } from "@/lib/server/ai";
+import { runLiveProbe } from "@/lib/ai/client";
 
 export type LiveTarget = {
   kind: TargetKind;

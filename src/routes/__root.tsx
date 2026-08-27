@@ -8,7 +8,8 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
-import { getGateStatus } from "@/lib/server/auth";
+import { BASE_PATH } from "@/lib/env";
+import { getGateStatus } from "@/lib/gate";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "RedTeamForge";
@@ -37,20 +38,20 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#0a0a0a" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/svg+xml", href: `${BASE_PATH}favicon.svg` },
       { rel: "stylesheet", href: appCss },
       {
         rel: "preload",
         as: "font",
         type: "font/woff2",
-        href: "/fonts/ibm-plex-mono-400-latin.woff2",
+        href: `${BASE_PATH}fonts/ibm-plex-mono-400-latin.woff2`,
         crossOrigin: "anonymous",
       },
       {
         rel: "preload",
         as: "font",
         type: "font/woff2",
-        href: "/fonts/archivo-black-400-latin.woff2",
+        href: `${BASE_PATH}fonts/archivo-black-400-latin.woff2`,
         crossOrigin: "anonymous",
       },
     ],
