@@ -25,12 +25,19 @@
 </p>
 
 <p align="center">
+  <a href="https://mh-sudo.github.io/redteamforge/"><strong>▶ Try Online</strong></a> ·
   <a href="#quick-start">Quick Start</a> ·
   <a href="#features">Features</a> ·
   <a href="#screenshots">Screenshots</a> ·
   <a href="#probe-catalog">Probes</a> ·
   <a href="#faq">FAQ</a> ·
   <a href="#contributing">Contributing</a>
+</p>
+
+<p align="center">
+  <strong>🌐 <a href="https://mh-sudo.github.io/redteamforge/">Try it in your browser — no install</a></strong><br>
+  <sub><strong>Try before you install:</strong> a browser-only build of this app runs free on GitHub Pages. Bring your own API key — calls go straight from your browser to the provider, and keys plus scan history never leave your browser.<br>
+  That hosted site is the <em>try-it demo</em> (serverless build). The full application is what you self-host below: server-side calls, optional password gate, Docker.</sub>
 </p>
 
 ---
@@ -70,6 +77,8 @@ Coming from [Garak](https://github.com/NVIDIA/garak), [Promptfoo](https://github
 
 ## Quick Start
 
+> **Just want to try it?** Skip the install — use the [hosted demo](https://mh-sudo.github.io/redteamforge/) (browser-only build). The steps below set up the full self-hosted application.
+
 **Needs:** Node.js 22+
 
 ```bash
@@ -103,7 +112,12 @@ docker compose up --build
 
 Then open [http://localhost:8080](http://localhost:8080) and connect providers in **Settings**. The image is Node 22 serving the production preview on port 8080. Rebuild after probe or UI changes.
 
-## Hosted demo
+## Hosted demo vs self-hosted
+
+Two ways to run RedTeamForge — same codebase, different builds:
+
+- **Hosted demo** ([mh-sudo.github.io/redteamforge](https://mh-sudo.github.io/redteamforge/)) — try it with zero setup. Browser-only build; your browser talks to the provider directly.
+- **Self-hosted** (Quick Start / Docker below) — the full application. A small Node server proxies provider calls, enabling SSRF guards and the optional password gate.
 
 A browser-only build of this app runs at **[mh-sudo.github.io/redteamforge](https://mh-sudo.github.io/redteamforge/)** — deployed automatically by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) on every push to `main`.
 
